@@ -96,18 +96,18 @@ async function renderPublicFeed() {
   try {
     const posts = await getAllPosts();
     if (!posts.length) {
-      container.innerHTML = `<div class="placeholder"><i class="fas fa-inbox"></i> nothing posted yet · admin can add files & links</div>`;
+      container.innerHTML = `<div class="placeholder"><i class="fas fa-moon"></i> nothing posted yet · admin can add files & links</div>`;
       return;
     }
     let html = '';
     for (const post of posts) {
       const date = new Date(post.createdAt).toLocaleString();
       if (post.type === "link") {
-        html += `<div class="post-item"><div class="post-header"><div class="post-title"><i class="fas fa-link" style="color:#3b82f6"></i> ${escapeHtml(post.title)}</div><div class="post-date">${date}</div></div>${post.description ? `<div class="post-desc">${escapeHtml(post.description)}</div>` : ''}<div class="post-action"><a href="${escapeHtml(post.url)}" target="_blank" class="btn-link"><i class="fas fa-external-link-alt"></i> open link</a></div></div>`;
+        html += `<div class="post-item"><div class="post-header"><div class="post-title"><i class="fas fa-link" style="color:#5f8eff"></i> ${escapeHtml(post.title)}</div><div class="post-date">${date}</div></div>${post.description ? `<div class="post-desc">${escapeHtml(post.description)}</div>` : ''}<div class="post-action"><a href="${escapeHtml(post.url)}" target="_blank" class="btn-link"><i class="fas fa-external-link-alt"></i> open link</a></div></div>`;
       } else if (post.type === "file") {
         const file = post.fileData;
         const isImage = file?.type?.startsWith("image/");
-        html += `<div class="post-item" data-file-id="${post.id}"><div class="post-header"><div class="post-title"><i class="fas fa-file-alt" style="color:#f59e0b"></i> ${escapeHtml(post.title)}</div><div class="post-date">${date}</div></div>${post.description ? `<div class="post-desc">${escapeHtml(post.description)}</div>` : ''}<div class="post-action"><span class="file-meta"><i class="far fa-file"></i> ${escapeHtml(file?.name || "file")} · ${formatFileSize(file?.size || 0)}</span><button class="btn-download download-file" data-id="${post.id}"><i class="fas fa-download"></i> download</button></div>${isImage ? `<div style="margin-left:1.8rem; margin-top:0.75rem;"><img id="preview-${post.id}" class="preview-img" alt="preview"></div>` : ''}</div>`;
+        html += `<div class="post-item" data-file-id="${post.id}"><div class="post-header"><div class="post-title"><i class="fas fa-file-alt" style="color:#ffb347"></i> ${escapeHtml(post.title)}</div><div class="post-date">${date}</div></div>${post.description ? `<div class="post-desc">${escapeHtml(post.description)}</div>` : ''}<div class="post-action"><span class="file-meta"><i class="far fa-file"></i> ${escapeHtml(file?.name || "file")} · ${formatFileSize(file?.size || 0)}</span><button class="btn-download download-file" data-id="${post.id}"><i class="fas fa-download"></i> download</button></div>${isImage ? `<div style="margin-left:1.8rem; margin-top:0.75rem;"><img id="preview-${post.id}" class="preview-img" alt="preview"></div>` : ''}</div>`;
       }
     }
     container.innerHTML = html;
@@ -125,7 +125,7 @@ async function renderPublicFeed() {
         }
       }
     }
-  } catch (err) { container.innerHTML = `<div class="placeholder" style="color:#dc2626">⚠️ error loading posts</div>`; }
+  } catch (err) { container.innerHTML = `<div class="placeholder" style="color:#ff9494">⚠️ error loading posts</div>`; }
 }
 
 function downloadFileFromPost(post) {
@@ -144,7 +144,7 @@ async function renderAdminZone() {
   const container = document.getElementById("adminContentArea");
   if (!container) return;
   if (!currentAdminLoggedIn) {
-    container.innerHTML = `<div class="login-box"><div style="text-align:center; margin-bottom:1rem"><i class="fas fa-fingerprint" style="font-size:2rem; color:#6366f1"></i><h3>admin authentication</h3><p style="font-size:0.8rem">only the owner can post & manage</p></div><div style="background:#f8fafc; padding:1.5rem; border-radius:1rem"><input type="password" id="adminPassInput" placeholder="master password"><button id="adminLoginBtn" class="btn-primary" style="width:100%"><i class="fas fa-unlock-alt"></i> unlock archive</button><div style="font-size:0.7rem; text-align:center; margin-top:0.75rem">default: admin123</div></div></div>`;
+    container.innerHTML = `<div class="login-box"><div style="text-align:center; margin-bottom:1rem"><i class="fas fa-fingerprint" style="font-size:2.5rem; color:#6d8eff"></i><h3>admin authentication</h3><p style="font-size:0.8rem">only the owner can post & manage</p></div><div style="background:rgba(0,0,0,0.5); padding:1.5rem; border-radius:1.5rem; backdrop-filter:blur(8px)"><input type="password" id="adminPassInput" placeholder="master password"><button id="adminLoginBtn" class="btn-primary" style="width:100%"><i class="fas fa-unlock-alt"></i> unlock archive</button><div style="font-size:0.7rem; text-align:center; margin-top:0.75rem">default: admin123</div></div></div>`;
     document.getElementById("adminLoginBtn")?.addEventListener("click", () => {
       if (document.getElementById("adminPassInput").value.trim() === localStorage.getItem(STORED_PASSWORD_KEY)) {
         currentAdminLoggedIn = true;
@@ -155,7 +155,7 @@ async function renderAdminZone() {
     return;
   }
   const posts = await getAllPosts();
-  container.innerHTML = `<div class="admin-dashboard"><div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin-bottom:1.5rem"><h2><i class="fas fa-crown" style="color:#eab308"></i> admin dashboard</h2><div><button id="changePwdBtn" class="btn-outline"><i class="fas fa-key"></i> change password</button> <button id="logoutAdminBtn" class="btn-outline" style="border-color:#fecaca; color:#b91c1c"><i class="fas fa-sign-out-alt"></i> logout</button></div></div><div class="admin-form"><h3><i class="fas fa-link"></i> post new link</h3><div class="form-group"><input id="linkTitle" placeholder="Title *"></div><div class="form-group"><input id="linkUrl" placeholder="URL *"></div><div class="form-group"><textarea id="linkDesc" rows="2" placeholder="Description (optional)"></textarea></div><button id="submitLinkBtn" class="btn-primary"><i class="fas fa-plus-circle"></i> publish link</button></div><div class="admin-form"><h3><i class="fas fa-file-upload"></i> upload single file</h3><div class="form-group"><input id="fileTitle" placeholder="Title *"></div><div class="form-group"><textarea id="fileDesc" rows="2" placeholder="Description"></textarea></div><div class="form-group"><input type="file" id="singleFileInput" class="file-input"></div><button id="submitFileBtn" class="btn-primary"><i class="fas fa-cloud-upload-alt"></i> upload file</button></div><div class="admin-form" style="background:#ecfdf5; border-left-color:#10b981"><h3><i class="fas fa-layer-group"></i> upload multiple files</h3><div class="form-group"><input id="multiTitlePrefix" placeholder="Title prefix (optional)"></div><div class="form-group"><textarea id="multiDesc" rows="2" placeholder="Common description (shared)"></textarea></div><div class="form-group"><input type="file" id="multiFileInput" multiple class="file-input"></div><button id="submitMultiBtn" class="btn-primary" style="background:#10b981"><i class="fas fa-upload"></i> upload all files</button></div><div><h3 style="margin-bottom:1rem"><i class="fas fa-archive"></i> manage posts (${posts.length})</h3><div id="adminPostsList"></div></div></div>`;
+  container.innerHTML = `<div class="admin-dashboard"><div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin-bottom:1.5rem"><h2><i class="fas fa-crown" style="color:#ffcd4a"></i> admin dashboard</h2><div><button id="changePwdBtn" class="btn-outline"><i class="fas fa-key"></i> change password</button> <button id="logoutAdminBtn" class="btn-outline" style="border-color:#ff7575; color:#ffabab"><i class="fas fa-sign-out-alt"></i> logout</button></div></div><div class="admin-form"><h3><i class="fas fa-link"></i> post new link</h3><div class="form-group"><input id="linkTitle" placeholder="Title *"></div><div class="form-group"><input id="linkUrl" placeholder="URL *"></div><div class="form-group"><textarea id="linkDesc" rows="2" placeholder="Description (optional)"></textarea></div><button id="submitLinkBtn" class="btn-primary"><i class="fas fa-plus-circle"></i> publish link</button></div><div class="admin-form"><h3><i class="fas fa-file-upload"></i> upload single file</h3><div class="form-group"><input id="fileTitle" placeholder="Title *"></div><div class="form-group"><textarea id="fileDesc" rows="2" placeholder="Description"></textarea></div><div class="form-group"><input type="file" id="singleFileInput" class="file-input"></div><button id="submitFileBtn" class="btn-primary"><i class="fas fa-cloud-upload-alt"></i> upload file</button></div><div class="admin-form" style="background:rgba(30, 60, 100, 0.5); border-left-color:#2dd4bf"><h3><i class="fas fa-layer-group"></i> upload multiple files</h3><div class="form-group"><input id="multiTitlePrefix" placeholder="Title prefix (optional)"></div><div class="form-group"><textarea id="multiDesc" rows="2" placeholder="Common description (shared)"></textarea></div><div class="form-group"><input type="file" id="multiFileInput" multiple class="file-input"></div><button id="submitMultiBtn" class="btn-primary" style="background:#2b6b6f"><i class="fas fa-upload"></i> upload all files</button></div><div><h3 style="margin-bottom:1rem"><i class="fas fa-archive"></i> manage posts (${posts.length})</h3><div id="adminPostsList"></div></div></div>`;
   await renderAdminPostsList(posts);
   document.getElementById("submitLinkBtn")?.addEventListener("click", handleAddLink);
   document.getElementById("submitFileBtn")?.addEventListener("click", handleAddFile);
@@ -171,9 +171,9 @@ async function renderAdminPostsList(posts) {
   for (const post of posts) {
     const date = new Date(post.createdAt).toLocaleString();
     if (post.type === "link") {
-      html += `<div class="admin-post-item"><div class="admin-post-info"><i class="fas fa-link" style="color:#3b82f6"></i> <strong>${escapeHtml(post.title)}</strong> <span style="font-size:0.7rem">${date}</span></div><div><button class="btn-edit edit-post" data-id="${post.id}" data-type="link"><i class="fas fa-edit"></i> edit</button> <button class="btn-danger delete-post" data-id="${post.id}"><i class="fas fa-trash-alt"></i> delete</button></div></div>`;
+      html += `<div class="admin-post-item"><div class="admin-post-info"><i class="fas fa-link" style="color:#5f8eff"></i> <strong>${escapeHtml(post.title)}</strong> <span style="font-size:0.7rem">${date}</span></div><div><button class="btn-edit edit-post" data-id="${post.id}" data-type="link"><i class="fas fa-edit"></i> edit</button> <button class="btn-danger delete-post" data-id="${post.id}"><i class="fas fa-trash-alt"></i> delete</button></div></div>`;
     } else {
-      html += `<div class="admin-post-item"><div class="admin-post-info"><i class="fas fa-file" style="color:#f59e0b"></i> <strong>${escapeHtml(post.title)}</strong> (${escapeHtml(post.fileData?.name || 'file')}) <span style="font-size:0.7rem">${date}</span></div><div><button class="btn-edit edit-post" data-id="${post.id}" data-type="file"><i class="fas fa-edit"></i> edit</button> <button class="btn-danger delete-post" data-id="${post.id}"><i class="fas fa-trash-alt"></i> delete</button></div></div>`;
+      html += `<div class="admin-post-item"><div class="admin-post-info"><i class="fas fa-file" style="color:#f5b042"></i> <strong>${escapeHtml(post.title)}</strong> (${escapeHtml(post.fileData?.name || 'file')}) <span style="font-size:0.7rem">${date}</span></div><div><button class="btn-edit edit-post" data-id="${post.id}" data-type="file"><i class="fas fa-edit"></i> edit</button> <button class="btn-danger delete-post" data-id="${post.id}"><i class="fas fa-trash-alt"></i> delete</button></div></div>`;
     }
   }
   listDiv.innerHTML = html;
@@ -198,7 +198,7 @@ async function editPostModal(id, type) {
     const newUrl = prompt("Edit URL:", post.url);
     if (!newUrl?.startsWith("http")) return alert("URL must start with http");
     await updatePost(id, { title: newTitle.trim(), description: newDesc.trim(), url: newUrl.trim() });
-  } else if (type === "file") {
+  } else {
     const newTitle = prompt("Edit title:", post.title);
     if (newTitle === null) return;
     const newDesc = prompt("Edit description:", post.description || "");
@@ -227,7 +227,6 @@ async function handleAddFile() {
   const desc = document.getElementById("fileDesc")?.value.trim();
   const file = document.getElementById("singleFileInput").files[0];
   if (!title || !file) return alert("Title and file required");
-  if (file.size > 100*1024*1024) return alert("File too large (max 100MB)");
   const fileData = { name: file.name, size: file.size, type: file.type, blob: file };
   await addPost({ type: "file", title, description: desc || "", fileData, createdAt: Date.now() });
   document.getElementById("fileTitle").value = "";
