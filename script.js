@@ -1,5 +1,5 @@
 const DB_NAME = "PrivateArchiveDB";
-const DB_VERSION = 6;
+const DB_VERSION = 6;  // version upgrade for downloads/rating
 const STORE_NAME = "posts";
 const STORED_PASSWORD_KEY = "archive_admin_pass";
 const DEFAULT_PASSWORD = "admin123";
@@ -7,23 +7,23 @@ const DEFAULT_PASSWORD = "admin123";
 let dbInstance = null;
 let currentAdminLoggedIn = false;
 
+// helpers
 function escapeHtml(str) {
   if (!str) return "";
   return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m] || m));
 }
-
 function formatFileSize(bytes) {
   if (!bytes) return "0 B";
   const k = 1024, sizes = ["B","KB","MB","GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+  const i = Math.floor(Math.log(bytes)/Math.log(k));
+  return parseFloat((bytes / Math.pow(k,i)).toFixed(1)) + " " + sizes[i];
 }
-
 function initPassword() {
   if (!localStorage.getItem(STORED_PASSWORD_KEY))
     localStorage.setItem(STORED_PASSWORD_KEY, DEFAULT_PASSWORD);
 }
 
+// IndexedDB
 function openDB() {
   return new Promise((resolve, reject) => {
     if (dbInstance && dbInstance.name === DB_NAME) return resolve(dbInstance);
@@ -33,7 +33,14 @@ function openDB() {
     request.onupgradeneeded = (e) => {
       const db = e.target.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "id", autoIncrement: true }).createIndex("createdAt", "createdAt");
+        const store = db.createObjectStore(STORE_NAME, { keyPath: "id", autoIncrement: true });
+        store.createIndex("createdAt", "createdAt");
+      } else {
+        // migrate existing store to add downloads/rating if needed
+        const store = e.target.transaction.objectStore(STORE_NAME);
+        if (!store.indexNames.contains("downloads")) {
+          // no need to create index, just ensure fields exist when reading/writing
+        }
       }
     };
   });
@@ -47,13 +54,14 @@ async function getAllPosts() {
     const req = index.openCursor(null, "prev");
     const results = [];
     req.onsuccess = (e) => {
-      const cursor = e.target.result;
-      if (cursor) {
-        let post = cursor.value;
+      const c = e.target.result;
+      if (c) {
+        let post = c.value;
+        // ensure new fields for old posts
         if (post.downloads === undefined) post.downloads = 0;
         if (post.rating === undefined) post.rating = 0;
         results.push(post);
-        cursor.continue();
+        c.continue();
       } else resolve(results);
     };
     req.onerror = () => reject(req.error);
@@ -62,6 +70,7 @@ async function getAllPosts() {
 
 async function addPost(postData) {
   const db = await openDB();
+  // add default metrics
   postData.downloads = 0;
   postData.rating = 0;
   return new Promise((resolve, reject) => {
@@ -104,10 +113,12 @@ async function incrementDownloads(id) {
   const posts = await getAllPosts();
   const post = posts.find(p => p.id === id);
   if (post) {
-    await updatePost(id, { downloads: (post.downloads || 0) + 1 });
+    const newDownloads = (post.downloads || 0) + 1;
+    await updatePost(id, { downloads: newDownloads });
   }
 }
 
+// update stats
 async function updateStats() {
   const posts = await getAllPosts();
   document.getElementById("statPosts").innerText = posts.length;
@@ -115,64 +126,35 @@ async function updateStats() {
   document.getElementById("statLinks").innerText = posts.filter(p => p.type === "link").length;
 }
 
+// PUBLIC FEED (grid cards)
 async function renderPublicFeed() {
   const container = document.getElementById("publicPostsContainer");
   if (!container) return;
   try {
     const posts = await getAllPosts();
     await updateStats();
-    if (!posts.length) {
-      container.innerHTML = `<div class="loading-state"><i class="fas fa-inbox"></i> nothing posted yet</div>`;
-      return;
-    }
+    if (!posts.length) { container.innerHTML = `<div class="loading-state"><i class="fas fa-inbox"></i> nothing posted yet</div>`; return; }
     let html = '';
     for (const post of posts) {
+      const date = new Date(post.createdAt).toLocaleDateString();
       if (post.type === "link") {
-        html += `<div class="post-card">
-          <div class="post-title"><i class="fas fa-link"></i> ${escapeHtml(post.title)}</div>
-          ${post.description ? `<div class="post-description">${escapeHtml(post.description)}</div>` : ''}
-          <div class="post-meta">
-            <span><i class="fas fa-download"></i> ${post.downloads || 0}</span>
-            <a href="#" class="btn-icon open-link" data-id="${post.id}" data-url="${escapeHtml(post.url)}"><i class="fas fa-external-link-alt"></i> open</a>
-          </div>
-        </div>`;
-      } else if (post.type === "file") {
+        html += `<div class="post-card"><div class="post-title"><i class="fas fa-link"></i> ${escapeHtml(post.title)}</div>${post.description ? `<div class="post-description">${escapeHtml(post.description)}</div>` : ''}<div class="post-meta"><span><i class="fas fa-download"></i> ${post.downloads || 0}</span><a href="${escapeHtml(post.url)}" target="_blank" class="btn-icon" data-id="${post.id}" onclick="incrementAndOpen(event, ${post.id}, '${escapeHtml(post.url)}')"><i class="fas fa-external-link-alt"></i> open</a></div></div>`;
+      } else {
         const file = post.fileData;
         const isImage = file?.type?.startsWith("image/");
-        html += `<div class="post-card" data-file-id="${post.id}">
-          <div class="post-title"><i class="fas fa-file-alt"></i> ${escapeHtml(post.title)}</div>
-          ${post.description ? `<div class="post-description">${escapeHtml(post.description)}</div>` : ''}
-          <div class="post-meta">
-            <span><i class="fas fa-download"></i> ${post.downloads || 0}</span>
-            <button class="btn-icon download-file" data-id="${post.id}"><i class="fas fa-download"></i> download</button>
-          </div>
-          ${isImage ? `<img id="preview-${post.id}" style="max-height:100px; margin-top:0.5rem; border-radius:0.5rem;">` : ''}
-        </div>`;
+        html += `<div class="post-card"><div class="post-title"><i class="fas fa-file-alt"></i> ${escapeHtml(post.title)}</div>${post.description ? `<div class="post-description">${escapeHtml(post.description)}</div>` : ''}<div class="post-meta"><span><i class="fas fa-download"></i> ${post.downloads || 0}</span><button class="btn-icon download-file" data-id="${post.id}"><i class="fas fa-download"></i> download</button></div>${isImage ? `<img id="preview-${post.id}" class="preview-img" style="max-height:100px; margin-top:0.5rem; border-radius:0.5rem;">` : ''}</div>`;
       }
     }
     container.innerHTML = html;
-
-    // attach events
+    // attach download events
     for (const post of posts) {
-      if (post.type === "link") {
-        const btn = container.querySelector(`.open-link[data-id="${post.id}"]`);
-        if (btn) {
-          btn.addEventListener("click", async (e) => {
-            e.preventDefault();
-            await incrementDownloads(post.id);
-            window.open(btn.dataset.url, '_blank');
-            renderPublicFeed();
-          });
-        }
-      } else if (post.type === "file" && post.fileData?.blob) {
+      if (post.type === "file" && post.fileData?.blob) {
         const btn = container.querySelector(`.download-file[data-id="${post.id}"]`);
-        if (btn) {
-          btn.addEventListener("click", async () => {
-            await incrementDownloads(post.id);
-            downloadFileFromPost(post);
-            renderPublicFeed();
-          });
-        }
+        btn?.addEventListener("click", async () => {
+          await incrementDownloads(post.id);
+          downloadFileFromPost(post);
+          renderPublicFeed(); // refresh counts
+        });
         if (post.fileData.type?.startsWith("image/")) {
           const img = document.getElementById(`preview-${post.id}`);
           if (img && post.fileData.blob) {
@@ -183,36 +165,34 @@ async function renderPublicFeed() {
         }
       }
     }
-  } catch (err) {
-    container.innerHTML = `<div class="loading-state">⚠️ error loading posts</div>`;
-  }
+    // for links: we need global increment function
+    window.incrementAndOpen = async (event, id, url) => {
+      event.preventDefault();
+      await incrementDownloads(id);
+      window.open(url, '_blank');
+      renderPublicFeed();
+    };
+  } catch (err) { container.innerHTML = `<div class="loading-state">⚠️ error</div>`; }
 }
 
 function downloadFileFromPost(post) {
   if (!post.fileData?.blob) return;
+  const url = URL.createObjectURL(post.fileData.blob);
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(post.fileData.blob);
-  a.download = post.fileData.name;
+  a.href = url;
+  a.download = post.fileData.name || "download";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 100);
 }
 
+// ADMIN ZONE (with Downloads & Rating, Edit/Delete)
 async function renderAdminZone() {
   const container = document.getElementById("adminContentArea");
   if (!container) return;
   if (!currentAdminLoggedIn) {
-    container.innerHTML = `
-      <div style="max-width:420px; margin:2rem auto; text-align:center">
-        <i class="fas fa-fingerprint" style="font-size:2.5rem; color:#00e0ff"></i>
-        <h3>admin authentication</h3>
-        <p style="font-size:0.8rem">only the owner can manage tools</p>
-        <div style="background:rgba(0,0,0,0.5); padding:1.5rem; border-radius:1.5rem">
-          <input type="password" id="adminPassInput" placeholder="master password" style="width:100%; margin-bottom:1rem">
-          <button id="adminLoginBtn" class="btn-primary" style="width:100%"><i class="fas fa-unlock-alt"></i> unlock</button>
-          <div style="font-size:0.7rem; margin-top:0.75rem">default: admin123</div>
-        </div>
-      </div>`;
+    container.innerHTML = `<div style="max-width:420px; margin:2rem auto; text-align:center"><i class="fas fa-fingerprint" style="font-size:2.5rem; color:#00e0ff"></i><h3>admin authentication</h3><p style="font-size:0.8rem">only the owner can manage tools</p><div style="background:rgba(0,0,0,0.5); padding:1.5rem; border-radius:1.5rem"><input type="password" id="adminPassInput" placeholder="master password" style="width:100%; margin-bottom:1rem"><button id="adminLoginBtn" class="btn-primary" style="width:100%"><i class="fas fa-unlock-alt"></i> unlock</button><div style="font-size:0.7rem; margin-top:0.75rem">default: admin123</div></div></div>`;
     document.getElementById("adminLoginBtn")?.addEventListener("click", () => {
       if (document.getElementById("adminPassInput").value.trim() === localStorage.getItem(STORED_PASSWORD_KEY)) {
         currentAdminLoggedIn = true;
@@ -227,33 +207,12 @@ async function renderAdminZone() {
     <div>
       <div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin-bottom:1.5rem">
         <h3><i class="fas fa-crown"></i> admin controls</h3>
-        <div>
-          <button id="changePwdBtn" class="btn-icon"><i class="fas fa-key"></i> change password</button>
-          <button id="logoutAdminBtn" class="btn-icon" style="border-color:#ff4d6d"><i class="fas fa-sign-out-alt"></i> logout</button>
-        </div>
+        <div><button id="changePwdBtn" class="btn-icon"><i class="fas fa-key"></i> change password</button> <button id="logoutAdminBtn" class="btn-icon" style="border-color:#ff4d6d"><i class="fas fa-sign-out-alt"></i> logout</button></div>
       </div>
-      <div class="admin-form">
-        <h4><i class="fas fa-link"></i> add new link</h4>
-        <input id="linkTitle" placeholder="Title *">
-        <input id="linkUrl" placeholder="URL *">
-        <textarea id="linkDesc" rows="2" placeholder="Description"></textarea>
-        <button id="submitLinkBtn" class="btn-primary">publish link</button>
-      </div>
-      <div class="admin-form">
-        <h4><i class="fas fa-file-upload"></i> upload file</h4>
-        <input id="fileTitle" placeholder="Title *">
-        <textarea id="fileDesc" rows="2" placeholder="Description"></textarea>
-        <input type="file" id="singleFileInput" class="file-input">
-        <button id="submitFileBtn" class="btn-primary">upload file</button>
-      </div>
-      <div class="admin-form">
-        <h4><i class="fas fa-layer-group"></i> multiple files</h4>
-        <input id="multiTitlePrefix" placeholder="Title prefix (optional)">
-        <textarea id="multiDesc" rows="2" placeholder="Common description"></textarea>
-        <input type="file" id="multiFileInput" multiple class="file-input">
-        <button id="submitMultiBtn" class="btn-primary">upload all files</button>
-      </div>
-      <h3 style="margin:2rem 0 1rem">manage tools & content</h3>
+      <div class="admin-form"><h4><i class="fas fa-link"></i> add new link</h4><input id="linkTitle" placeholder="Title *"><input id="linkUrl" placeholder="URL *"><textarea id="linkDesc" rows="2" placeholder="Description"></textarea><button id="submitLinkBtn" class="btn-primary">publish link</button></div>
+      <div class="admin-form"><h4><i class="fas fa-file-upload"></i> upload file</h4><input id="fileTitle" placeholder="Title *"><textarea id="fileDesc" rows="2" placeholder="Description"></textarea><input type="file" id="singleFileInput"><button id="submitFileBtn" class="btn-primary">upload file</button></div>
+      <div class="admin-form"><h4><i class="fas fa-layer-group"></i> multiple files</h4><input id="multiTitlePrefix" placeholder="Title prefix"><textarea id="multiDesc" rows="2" placeholder="Common description"></textarea><input type="file" id="multiFileInput" multiple><button id="submitMultiBtn" class="btn-primary">upload all</button></div>
+      <h3 style="margin: 2rem 0 1rem">manage tools & content</h3>
       <div id="adminPostsList"></div>
     </div>`;
   await renderAdminPostsList(posts);
@@ -269,6 +228,8 @@ async function renderAdminPostsList(posts) {
   if (!posts.length) { listDiv.innerHTML = `<div class="loading-state">no tools yet</div>`; return; }
   let html = '';
   for (const post of posts) {
+    const downloads = post.downloads || 0;
+    const rating = post.rating || 0;
     html += `
       <div class="admin-tool-card">
         <div class="tool-header">
@@ -280,8 +241,8 @@ async function renderAdminPostsList(posts) {
         </div>
         ${post.description ? `<div class="tool-desc">${escapeHtml(post.description)}</div>` : ''}
         <div class="tool-stats">
-          <span><i class="fas fa-download"></i> Downloads: ${post.downloads || 0}</span>
-          <span><i class="fas fa-star"></i> Rating: ${(post.rating || 0).toFixed(1)}</span>
+          <span><i class="fas fa-download"></i> Downloads: ${downloads}</span>
+          <span><i class="fas fa-star"></i> Rating: ${rating.toFixed(1)}</span>
         </div>
       </div>`;
   }
@@ -303,8 +264,12 @@ async function editPostModal(id, type) {
   const newTitle = prompt("Edit title:", post.title);
   if (newTitle === null) return;
   const newDesc = prompt("Edit description:", post.description || "");
-  let newDownloads = parseInt(prompt("Downloads count:", post.downloads || 0)) || 0;
-  let newRating = parseFloat(prompt("Rating (0-5, e.g., 4.5):", post.rating || 0)) || 0;
+  let newDownloads = prompt("Downloads count:", post.downloads || 0);
+  if (newDownloads === null) return;
+  newDownloads = parseInt(newDownloads) || 0;
+  let newRating = prompt("Rating (0-5, e.g., 4.7):", post.rating || 0);
+  if (newRating === null) return;
+  newRating = parseFloat(newRating) || 0;
   if (newRating < 0) newRating = 0;
   if (newRating > 5) newRating = 5;
   let updateObj = { title: newTitle.trim(), description: newDesc.trim(), downloads: newDownloads, rating: newRating };
@@ -318,12 +283,13 @@ async function editPostModal(id, type) {
   renderPublicFeed();
 }
 
+// handlers for adding posts
 async function handleAddLink() {
   const title = document.getElementById("linkTitle")?.value.trim();
   const url = document.getElementById("linkUrl")?.value.trim();
   const desc = document.getElementById("linkDesc")?.value.trim();
   if (!title || !url) return alert("Title and URL required");
-  if (!url.startsWith("http")) return alert("URL must start with http:// or https://");
+  if (!url.startsWith("http")) return alert("Invalid URL");
   await addPost({ type: "link", title, description: desc || "", url, createdAt: Date.now() });
   document.getElementById("linkTitle").value = "";
   document.getElementById("linkUrl").value = "";
@@ -353,7 +319,7 @@ async function handleMultipleFiles() {
   if (!files.length) return alert("Select at least one file");
   for (const file of files) {
     let title = prefix ? `${prefix} - ${file.name}` : file.name;
-    if (title.length > 80) title = title.slice(0, 77) + "...";
+    if (title.length > 80) title = title.slice(0,77)+"...";
     const fileData = { name: file.name, size: file.size, type: file.type, blob: file };
     await addPost({ type: "file", title, description: commonDesc, fileData, createdAt: Date.now() });
   }
@@ -372,28 +338,18 @@ async function handlePasswordChange() {
   if (!newPass || newPass.length < 4) return alert("At least 4 characters");
   if (newPass !== prompt("Confirm new password:")) return alert("Passwords do not match");
   localStorage.setItem(STORED_PASSWORD_KEY, newPass);
-  alert("Password changed successfully!");
+  alert("Password changed!");
 }
 
 function initTabs() {
-  const pubPanel = document.getElementById("publicPanel");
-  const adminPanel = document.getElementById("adminPanel");
-  const pubBtn = document.getElementById("tabPublicBtn");
-  const adminBtn = document.getElementById("tabAdminBtn");
-
+  const pubPanel = document.getElementById("publicPanel"), adminPanel = document.getElementById("adminPanel");
+  const pubBtn = document.getElementById("tabPublicBtn"), adminBtn = document.getElementById("tabAdminBtn");
   function setActive(tab) {
-    if (tab === "public") {
-      pubBtn.classList.add("active");
-      adminBtn.classList.remove("active");
-      pubPanel.classList.remove("hidden");
-      adminPanel.classList.add("hidden");
-    } else {
-      adminBtn.classList.add("active");
-      pubBtn.classList.remove("active");
-      adminPanel.classList.remove("hidden");
-      pubPanel.classList.add("hidden");
-      renderAdminZone();
-    }
+    pubBtn.classList.toggle("active", tab === "public");
+    adminBtn.classList.toggle("active", tab === "admin");
+    pubPanel.classList.toggle("hidden", tab !== "public");
+    adminPanel.classList.toggle("hidden", tab !== "admin");
+    if (tab === "admin") renderAdminZone();
   }
   pubBtn.onclick = () => setActive("public");
   adminBtn.onclick = () => setActive("admin");
