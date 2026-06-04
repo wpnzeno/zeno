@@ -134,7 +134,7 @@ function formatFileSize(bytes) { if (!bytes) return "0 B"; const k=1024, sizes=[
 
 // ---- Gist read/write ----
 async function readGist() {
-  if (GITHUB_TOKEN === "YOUR_GITHUB_PERSONAL_ACCESS_TOKEN") throw new Error("Please set your GitHub token and Gist ID in the code.");
+  if (GITHUB_TOKEN === "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") throw new Error("Please set your GitHub token and Gist ID in the code.");
   const res = await fetch(GIST_API_URL, { headers: { Authorization: `token ${GITHUB_TOKEN}` } });
   if (!res.ok) throw new Error(`Gist read failed: ${res.status}`);
   const data = await res.json();
