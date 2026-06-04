@@ -1,4 +1,3 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,37 +8,33 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <div class="badge"><i class="fas fa-lock"></i> private vault</div>
-      <h1>my archive</h1>
-      <p class="sub">files · links · only me</p>
-    </div>
-
-    <div class="tabs">
-      <button id="tabPublicBtn" class="tab-btn active"><i class="fas fa-globe"></i> Public feed</button>
-      <button id="tabAdminBtn" class="tab-btn"><i class="fas fa-user-shield"></i> Admin zone</button>
-    </div>
-
-    <div id="publicPanel" class="panel">
-      <div class="card">
-        <div class="card-header"><i class="fas fa-newspaper"></i> public feed <span class="badge-light">read-only</span></div>
-        <div id="publicPostsContainer" class="posts-list">
-          <div class="placeholder"><i class="fas fa-spinner fa-pulse"></i> loading archive...</div>
-        </div>
-      </div>
-    </div>
-
-    <div id="adminPanel" class="panel hidden">
-      <div class="card">
-        <div id="adminContentArea" class="admin-dynamic">
-          <div class="placeholder"><i class="fas fa-key"></i> verifying access...</div>
-        </div>
-      </div>
-    </div>
-
-    <footer><i class="fas fa-database"></i> local storage (IndexedDB) · only you control the password</footer>
+<div class="container">
+  <div class="header">
+    <div class="badge"><i class="fas fa-lock"></i> private vault</div>
+    <h1>my archive</h1>
+    <p class="sub">files · links · only me</p>
   </div>
-  <script src="script.js" defer></script>
+
+  <div class="tabs">
+    <button id="tabPublicBtn" class="tab-btn active"><i class="fas fa-globe"></i> Public feed</button>
+    <button id="tabAdminBtn" class="tab-btn"><i class="fas fa-user-shield"></i> Admin zone</button>
+  </div>
+
+  <div id="publicPanel" class="panel">
+    <div class="card">
+      <div class="card-header"><i class="fas fa-newspaper"></i> public feed <span class="badge-light">read-only</span></div>
+      <div id="publicPostsContainer" class="posts-list"><div class="placeholder"><i class="fas fa-spinner fa-pulse"></i> loading archive...</div></div>
+    </div>
+  </div>
+
+  <div id="adminPanel" class="panel hidden">
+    <div class="card">
+      <div id="adminContentArea" class="admin-dynamic"><div class="placeholder"><i class="fas fa-key"></i> verifying access...</div></div>
+    </div>
+  </div>
+
+  <footer><i class="fas fa-database"></i> local storage (IndexedDB) · only you control the password</footer>
+</div>
+<script src="script.js"></script>
 </body>
 </html>
