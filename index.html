@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>Zeno</title>
+  <title>Zeno | Sidebar Layout</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
@@ -17,6 +17,7 @@
       --text-light: #f0f3ff;
       --text-muted: #a0a8c0;
       --danger: #ff4d6d;
+      --sidebar-width: 260px;
     }
     * {
       margin: 0;
@@ -27,16 +28,69 @@
       font-family: 'Inter', sans-serif;
       background: radial-gradient(circle at 10% 20%, #0a0f1f, #03050b);
       color: var(--text-light);
-      padding: 2rem 1.5rem;
       min-height: 100vh;
     }
-    .container {
-      max-width: 1300px;
-      margin: 0 auto;
+    /* main layout: flex with sidebar */
+    .app-wrapper {
+      display: flex;
+      min-height: 100vh;
     }
+    /* SIDEBAR */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: rgba(5, 10, 20, 0.7);
+      backdrop-filter: blur(16px);
+      border-right: 1px solid var(--border-glow);
+      padding: 2rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    /* sidebar buttons (vertical) */
+    .sidebar-btn {
+      background: rgba(15,20,35,0.6);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(0,224,255,0.3);
+      padding: 0.9rem 1rem;
+      border-radius: 60px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      font-size: 1rem;
+      width: 100%;
+      justify-content: center;
+    }
+    .sidebar-btn i {
+      font-size: 1.1rem;
+    }
+    .sidebar-btn.active {
+      background: linear-gradient(95deg, var(--accent-primary), var(--accent-secondary));
+      border-color: transparent;
+      color: white;
+      box-shadow: 0 0 12px rgba(0,224,255,0.4);
+    }
+    .sidebar-btn:hover:not(.active) {
+      border-color: var(--accent-primary);
+      color: white;
+    }
+    /* main content area */
+    .main-content {
+      flex: 1;
+      padding: 2rem 2rem 2rem 2rem;
+      overflow-x: auto;
+    }
+    /* Hero stats (full width inside main) */
     .hero {
       text-align: center;
-      margin-bottom: 3rem;
+      margin-bottom: 2rem;
     }
     .badge-group {
       display: flex;
@@ -55,7 +109,7 @@
       color: var(--accent-primary);
     }
     h1 {
-      font-size: 3.5rem;
+      font-size: 2.8rem;
       font-weight: 800;
       background: linear-gradient(135deg, #fff, var(--accent-primary), var(--accent-secondary));
       background-clip: text;
@@ -86,43 +140,14 @@
       letter-spacing: 1px;
       color: var(--text-muted);
     }
-    .tabs {
-      display: flex;
-      justify-content: center;
-      gap: 1rem;
-      margin-bottom: 2rem;
-    }
-    .tab-btn {
-      background: rgba(15,20,35,0.6);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(0,224,255,0.3);
-      padding: 0.7rem 1.8rem;
-      border-radius: 40px;
-      font-weight: 600;
-      color: var(--text-muted);
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-    }
-    .tab-btn.active {
-      background: linear-gradient(95deg, var(--accent-primary), var(--accent-secondary));
-      border-color: transparent;
-      color: white;
-      box-shadow: 0 0 15px rgba(0,224,255,0.4);
-    }
-    .tab-btn:hover:not(.active) {
-      border-color: var(--accent-primary);
-      color: white;
-    }
+    /* panels */
     .panel.hidden {
       display: none;
     }
-    /* headings with generous spacing */
+    /* section headers */
     .section-header {
-      margin-top: 2rem;
-      margin-bottom: 3rem;  /* increased bottom margin for more space */
+      margin-top: 1rem;
+      margin-bottom: 2rem;
       text-align: center;
     }
     .section-header h2 {
@@ -136,6 +161,7 @@
       color: var(--text-muted);
       font-size: 0.85rem;
     }
+    /* posts grid */
     .posts-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -244,7 +270,7 @@
       color: var(--text-muted);
     }
     footer {
-      margin-top: 4rem;
+      margin-top: 3rem;
       text-align: center;
       border-top: 1px solid rgba(0,224,255,0.2);
       padding-top: 2rem;
@@ -263,52 +289,75 @@
     .footer-links a:hover {
       color: var(--accent-primary);
     }
-    @media (max-width: 640px) {
-      body { padding: 1rem; }
-      h1 { font-size: 2.2rem; }
+    /* responsive: sidebar becomes top bar on small screens */
+    @media (max-width: 768px) {
+      .app-wrapper {
+        flex-direction: column;
+      }
+      .sidebar {
+        width: 100%;
+        height: auto;
+        position: static;
+        flex-direction: row;
+        justify-content: center;
+        border-right: none;
+        border-bottom: 1px solid var(--border-glow);
+        padding: 1rem;
+      }
+      .sidebar-btn {
+        width: auto;
+        padding: 0.6rem 1.2rem;
+      }
+      .main-content {
+        padding: 1.5rem;
+      }
+      h1 { font-size: 2rem; }
       .stats { gap: 1.5rem; }
-      .tab-btn { padding: 0.4rem 1rem; font-size: 0.8rem; }
     }
   </style>
 </head>
 <body>
-<div class="container">
-  <div class="hero">
-    <div class="badge-group">
-      <span class="badge"><i class="fas fa-lock"></i> secure</span>
-      <span class="badge"><i class="fas fa-user-shield"></i> trusted</span>
+<div class="app-wrapper">
+  <!-- Sidebar with two buttons -->
+  <div class="sidebar">
+    <button id="sidebarPublicBtn" class="sidebar-btn active"><i class="fas fa-globe"></i> content</button>
+    <button id="sidebarAdminBtn" class="sidebar-btn"><i class="fas fa-user-shield"></i> admin</button>
+  </div>
+
+  <!-- Main content area -->
+  <div class="main-content">
+    <div class="hero">
+      <div class="badge-group">
+        <span class="badge"><i class="fas fa-lock"></i> secure</span>
+        <span class="badge"><i class="fas fa-user-shield"></i> trusted</span>
+      </div>
+      <h1>Zeno</h1>
+      <p class="subtitle">scripts · config files · executors</p>
+      <div class="stats">
+        <div class="stat"><div class="stat-number" id="statPosts">0</div><div class="stat-label">TOTAL POSTS</div></div>
+        <div class="stat"><div class="stat-number" id="statFiles">0</div><div class="stat-label">FILES</div></div>
+        <div class="stat"><div class="stat-number" id="statLinks">0</div><div class="stat-label">LINKS</div></div>
+      </div>
     </div>
-    <h1>Zeno</h1>
-    <p class="subtitle">scripts · config files · executors</p>
-    <div class="stats">
-      <div class="stat"><div class="stat-number" id="statPosts">0</div><div class="stat-label">TOTAL POSTS</div></div>
-      <div class="stat"><div class="stat-number" id="statFiles">0</div><div class="stat-label">FILES</div></div>
-      <div class="stat"><div class="stat-number" id="statLinks">0</div><div class="stat-label">LINKS</div></div>
+
+    <div id="publicPanel" class="panel">
+      <div class="section-header"><h2><i class="fas fa-archive"></i> Contents</h2><p>downloadable resources</p></div>
+      <div id="publicPostsContainer" class="posts-grid"><div class="loading-state"><i class="fas fa-spinner fa-pulse"></i> loading...</div></div>
     </div>
-  </div>
 
-  <div class="tabs">
-    <button id="tabPublicBtn" class="tab-btn active"><i class="fas fa-globe"></i> content</button>
-    <button id="tabAdminBtn" class="tab-btn"><i class="fas fa-user-shield"></i> admin</button>
-  </div>
-
-  <div id="publicPanel" class="panel">
-    <div class="section-header"><h2><i class="fas fa-archive"></i> Contents</h2><p>downloadable resources</p></div>
-    <div id="publicPostsContainer" class="posts-grid"><div class="loading-state"><i class="fas fa-spinner fa-pulse"></i> loading...</div></div>
-  </div>
-
-  <div id="adminPanel" class="panel hidden">
-    <div class="section-header"><h2><i class="fas fa-crown"></i> admin panel</h2><p>manage tools & content</p></div>
-    <div id="adminContentArea" class="admin-dynamic"><div class="loading-state"><i class="fas fa-key"></i> verifying access...</div></div>
-  </div>
-
-  <footer>
-    <div class="footer-links">
-      <a href="https://youtube.com/@wpn-zeno" target="_blank" rel="noopener noreferrer"><i class="fab fa-youtube"></i> YouTube</a>
-      <a href="https://discord.com/invite/5PtRGz9mDY" target="_blank" rel="noopener noreferrer"><i class="fab fa-discord"></i> Discord</a>
+    <div id="adminPanel" class="panel hidden">
+      <div class="section-header"><h2><i class="fas fa-crown"></i> admin panel</h2><p>manage tools & content</p></div>
+      <div id="adminContentArea" class="admin-dynamic"><div class="loading-state"><i class="fas fa-key"></i> verifying access...</div></div>
     </div>
-    <p>© 2026 – zeno · your trusted provider</p>
-  </footer>
+
+    <footer>
+      <div class="footer-links">
+        <a href="https://youtube.com/@wpn-zeno" target="_blank" rel="noopener noreferrer"><i class="fab fa-youtube"></i> YouTube</a>
+        <a href="https://discord.com/invite/5PtRGz9mDY" target="_blank" rel="noopener noreferrer"><i class="fab fa-discord"></i> Discord</a>
+      </div>
+      <p>© 2026 – zeno · your trusted provider</p>
+    </footer>
+  </div>
 </div>
 
 <script>
@@ -322,7 +371,6 @@
   let dbInstance = null;
   let currentAdminLoggedIn = false;
 
-  // helpers
   function escapeHtml(str) {
     if (!str) return "";
     return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m] || m));
@@ -338,7 +386,6 @@
       localStorage.setItem(STORED_PASSWORD_KEY, DEFAULT_PASSWORD);
   }
 
-  // IndexedDB
   function openDB() {
     return new Promise((resolve, reject) => {
       if (dbInstance && dbInstance.name === DB_NAME) return resolve(dbInstance);
@@ -348,8 +395,7 @@
       request.onupgradeneeded = (e) => {
         const db = e.target.result;
         if (!db.objectStoreNames.contains(STORE_NAME)) {
-          const store = db.createObjectStore(STORE_NAME, { keyPath: "id", autoIncrement: true });
-          store.createIndex("createdAt", "createdAt");
+          db.createObjectStore(STORE_NAME, { keyPath: "id", autoIncrement: true }).createIndex("createdAt", "createdAt");
         }
       };
     });
@@ -431,7 +477,6 @@
     document.getElementById("statLinks").innerText = posts.filter(p => p.type === "link").length;
   }
 
-  // RENDER PUBLIC FEED
   async function renderPublicFeed() {
     const container = document.getElementById("publicPostsContainer");
     if (!container) return;
@@ -468,8 +513,6 @@
         }
       }
       container.innerHTML = html;
-
-      // attach events
       for (const post of posts) {
         if (post.type === "link") {
           const btn = container.querySelector(`.open-link[data-id="${post.id}"]`);
@@ -516,7 +559,6 @@
     document.body.removeChild(a);
   }
 
-  // ADMIN ZONE
   async function renderAdminZone() {
     const container = document.getElementById("adminContentArea");
     if (!container) return;
@@ -643,7 +685,6 @@
     renderPublicFeed();
   }
 
-  // handlers for adding posts
   async function handleAddLink() {
     const title = document.getElementById("linkTitle")?.value.trim();
     const url = document.getElementById("linkUrl")?.value.trim();
@@ -701,39 +742,38 @@
     alert("Password changed successfully!");
   }
 
-  // tabs
-  function initTabs() {
-    const pubPanel = document.getElementById("publicPanel");
+  // sidebar activation
+  function initSidebar() {
+    const pubBtn = document.getElementById("sidebarPublicBtn");
+    const adminBtn = document.getElementById("sidebarAdminBtn");
+    const publicPanel = document.getElementById("publicPanel");
     const adminPanel = document.getElementById("adminPanel");
-    const pubBtn = document.getElementById("tabPublicBtn");
-    const adminBtn = document.getElementById("tabAdminBtn");
 
-    function setActive(tab) {
-      if (tab === "public") {
+    function setActivePanel(panel) {
+      if (panel === "public") {
         pubBtn.classList.add("active");
         adminBtn.classList.remove("active");
-        pubPanel.classList.remove("hidden");
+        publicPanel.classList.remove("hidden");
         adminPanel.classList.add("hidden");
       } else {
         adminBtn.classList.add("active");
         pubBtn.classList.remove("active");
         adminPanel.classList.remove("hidden");
-        pubPanel.classList.add("hidden");
-        renderAdminZone();
+        publicPanel.classList.add("hidden");
+        renderAdminZone();  // refresh admin panel when opened
       }
     }
-    pubBtn.onclick = () => setActive("public");
-    adminBtn.onclick = () => setActive("admin");
-    setActive("public");
+    pubBtn.onclick = () => setActivePanel("public");
+    adminBtn.onclick = () => setActivePanel("admin");
+    setActivePanel("public");
   }
 
-  // bootstrap
   (async () => {
     initPassword();
     await openDB();
     await renderPublicFeed();
-    initTabs();
-    renderAdminZone();
+    initSidebar();
+    renderAdminZone(); // preload but hidden
   })();
 </script>
 </body>
