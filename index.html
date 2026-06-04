@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>Zeno | Hamburger Sidebar</title>
+  <title>Zeno | Image Support</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
@@ -30,7 +30,6 @@
       min-height: 100vh;
       overflow-x: hidden;
     }
-    /* top bar */
     .top-bar {
       display: flex;
       justify-content: space-between;
@@ -65,7 +64,6 @@
       -webkit-background-clip: text;
       color: transparent;
     }
-    /* sidebar overlay & sidebar */
     .sidebar-overlay {
       position: fixed;
       top: 0;
@@ -143,13 +141,11 @@
       font-size: 1.3rem;
       cursor: pointer;
     }
-    /* main content */
     .main-content {
       padding: 2rem;
       max-width: 1300px;
       margin: 0 auto;
     }
-    /* stats block */
     .stats-block {
       text-align: center;
       margin: 2rem 0;
@@ -193,7 +189,6 @@
       letter-spacing: 1px;
       color: var(--text-muted);
     }
-    /* panels */
     .panel.hidden {
       display: none;
     }
@@ -213,9 +208,8 @@
       color: var(--text-muted);
       font-size: 0.85rem;
     }
-    /* extra spacing for admin authentication form (moved downward) */
     .admin-auth-container {
-      margin-top: 5rem;   /* increased from 2.5rem to move it lower */
+      margin-top: 5rem;
     }
     .posts-grid {
       display: grid;
@@ -233,6 +227,15 @@
     .post-card:hover, .admin-tool-card:hover {
       transform: translateY(-4px);
       border-color: var(--accent-primary);
+    }
+    .post-thumbnail {
+      width: 100%;
+      max-height: 160px;
+      object-fit: cover;
+      border-radius: 0.8rem;
+      margin-bottom: 0.8rem;
+      border: 1px solid rgba(0,224,255,0.3);
+      background: #0a0c15;
     }
     .post-title, .tool-title {
       font-size: 1.2rem;
@@ -308,6 +311,12 @@
       margin-bottom: 0.8rem;
       font-family: inherit;
     }
+    .image-preview {
+      max-width: 100%;
+      max-height: 120px;
+      margin-top: 0.5rem;
+      border-radius: 0.5rem;
+    }
     .tool-stats {
       display: flex;
       gap: 1.5rem;
@@ -366,7 +375,6 @@
 </div>
 
 <div class="main-content">
-  <!-- stats block (visible on public panel) -->
   <div class="stats-block" id="statsBlock">
     <div class="badge-group">
       <span class="badge"><i class="fas fa-lock"></i> secure</span>
@@ -399,9 +407,9 @@
 </div>
 
 <script>
-  // ========== FULL JAVASCRIPT ==========
+  // ========== FULL JAVASCRIPT WITH IMAGE SUPPORT ==========
   const DB_NAME = "PrivateArchiveDB";
-  const DB_VERSION = 6;
+  const DB_VERSION = 7; // version bump for image field
   const STORE_NAME = "posts";
   const STORED_PASSWORD_KEY = "archive_admin_pass";
   const DEFAULT_PASSWORD = "Lordexploits@1_pn";
@@ -456,6 +464,16 @@
 
   async function updateStats() { const posts=await getAllPosts(); document.getElementById("statPosts").innerText=posts.length; document.getElementById("statFiles").innerText=posts.filter(p=>p.type==="file").length; document.getElementById("statLinks").innerText=posts.filter(p=>p.type==="link").length; }
 
+  // Helper to read image file as base64 or blob? We'll store as blob URL? Better store as blob in IndexedDB
+  function readImageAsBlob(file) {
+    return new Promise((resolve) => {
+      if (!file) resolve(null);
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.readAsDataURL(file);
+    });
+  }
+
   async function renderPublicFeed() {
     const container = document.getElementById("publicPostsContainer");
     if (!container) return;
@@ -465,11 +483,29 @@
       if (!posts.length) { container.innerHTML = `<div class="loading-state"><i class="fas fa-inbox"></i> nothing posted yet</div>`; return; }
       let html = '';
       for (const post of posts) {
+        // thumbnail image if exists
+        const thumb = post.imageData ? `<img src="${post.imageData}" class="post-thumbnail" alt="thumbnail">` : '';
         if (post.type === "link") {
-          html += `<div class="post-card"><div class="post-title"><i class="fas fa-link"></i> ${escapeHtml(post.title)}</div>${post.description?`<div class="post-description">${escapeHtml(post.description)}</div>`:''}<div class="post-meta"><span><i class="fas fa-download"></i> ${post.downloads||0}</span><a href="#" class="btn-icon open-link" data-id="${post.id}" data-url="${escapeHtml(post.url)}"><i class="fas fa-external-link-alt"></i> open</a></div></div>`;
+          html += `<div class="post-card">
+            ${thumb}
+            <div class="post-title"><i class="fas fa-link"></i> ${escapeHtml(post.title)}</div>
+            ${post.description ? `<div class="post-description">${escapeHtml(post.description)}</div>` : ''}
+            <div class="post-meta">
+              <span><i class="fas fa-download"></i> ${post.downloads||0}</span>
+              <a href="#" class="btn-icon open-link" data-id="${post.id}" data-url="${escapeHtml(post.url)}"><i class="fas fa-external-link-alt"></i> open</a>
+            </div>
+          </div>`;
         } else {
-          const file=post.fileData; const isImage=file?.type?.startsWith("image/");
-          html+=`<div class="post-card"><div class="post-title"><i class="fas fa-file-alt"></i> ${escapeHtml(post.title)}</div>${post.description?`<div class="post-description">${escapeHtml(post.description)}</div>`:''}<div class="post-meta"><span><i class="fas fa-download"></i> ${post.downloads||0}</span><button class="btn-icon download-file" data-id="${post.id}"><i class="fas fa-download"></i> download</button></div>${isImage?`<img id="preview-${post.id}" style="max-height:100px; margin-top:0.5rem; border-radius:0.5rem;">`:''}</div>`;
+          const file = post.fileData;
+          html += `<div class="post-card">
+            ${thumb}
+            <div class="post-title"><i class="fas fa-file-alt"></i> ${escapeHtml(post.title)}</div>
+            ${post.description ? `<div class="post-description">${escapeHtml(post.description)}</div>` : ''}
+            <div class="post-meta">
+              <span><i class="fas fa-download"></i> ${post.downloads||0}</span>
+              <button class="btn-icon download-file" data-id="${post.id}"><i class="fas fa-download"></i> download</button>
+            </div>
+          </div>`;
         }
       }
       container.innerHTML=html;
@@ -480,10 +516,6 @@
         } else if(post.type==="file" && post.fileData?.blob){
           const btn=container.querySelector(`.download-file[data-id="${post.id}"]`);
           btn?.addEventListener("click", async ()=>{ await incrementDownloads(post.id); downloadFileFromPost(post); renderPublicFeed(); });
-          if(post.fileData.type?.startsWith("image/")){
-            const img=document.getElementById(`preview-${post.id}`);
-            if(img && post.fileData.blob){ const url=URL.createObjectURL(post.fileData.blob); img.src=url; img.onload=()=>URL.revokeObjectURL(url); }
-          }
         }
       }
     } catch(err){ container.innerHTML=`<div class="loading-state">⚠️ error</div>`; }
@@ -494,26 +526,81 @@
     const container = document.getElementById("adminContentArea");
     if (!container) return;
     if (!currentAdminLoggedIn) {
-      // moved downward via admin-auth-container class (margin-top: 5rem)
       container.innerHTML = `<div class="admin-auth-container"><div style="max-width:420px; margin:0 auto; text-align:center"><i class="fas fa-fingerprint" style="font-size:2.5rem; color:#00e0ff"></i><h3>admin authentication</h3><p style="font-size:0.8rem">only the owner can manage tools</p><div style="background:rgba(0,0,0,0.5); padding:1.5rem; border-radius:1.5rem"><input type="password" id="adminPassInput" placeholder="master password" style="width:100%; margin-bottom:1rem"><button id="adminLoginBtn" class="btn-primary" style="width:100%"><i class="fas fa-unlock-alt"></i> unlock</button></div></div></div>`;
       document.getElementById("adminLoginBtn")?.addEventListener("click", () => { if(document.getElementById("adminPassInput").value.trim() === localStorage.getItem(STORED_PASSWORD_KEY)) { currentAdminLoggedIn = true; renderAdminZone(); renderPublicFeed(); } else alert("❌ wrong password"); });
       return;
     }
     const posts = await getAllPosts();
-    container.innerHTML = `<div><div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin-bottom:1.5rem"><h3><i class="fas fa-crown"></i> admin controls</h3><div><button id="changePwdBtn" class="btn-icon"><i class="fas fa-key"></i> change password</button> <button id="logoutAdminBtn" class="btn-icon" style="border-color:#ff4d6d"><i class="fas fa-sign-out-alt"></i> logout</button></div></div><div class="admin-form"><h4><i class="fas fa-link"></i> add new link</h4><input id="linkTitle" placeholder="Title *"><input id="linkUrl" placeholder="URL *"><textarea id="linkDesc" rows="2" placeholder="Description"></textarea><button id="submitLinkBtn" class="btn-primary">publish link</button></div><div class="admin-form"><h4><i class="fas fa-file-upload"></i> upload file</h4><input id="fileTitle" placeholder="Title *"><textarea id="fileDesc" rows="2" placeholder="Description"></textarea><input type="file" id="singleFileInput" class="file-input"><button id="submitFileBtn" class="btn-primary">upload file</button></div><div class="admin-form"><h4><i class="fas fa-layer-group"></i> multiple files</h4><input id="multiTitlePrefix" placeholder="Title prefix"><textarea id="multiDesc" rows="2" placeholder="Common description"></textarea><input type="file" id="multiFileInput" multiple class="file-input"><button id="submitMultiBtn" class="btn-primary">upload all</button></div><h3 style="margin:2rem 0 1rem">manage tools & content</h3><div id="adminPostsList"></div></div>`;
+    container.innerHTML = `<div><div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin-bottom:1.5rem"><h3><i class="fas fa-crown"></i> admin controls</h3><div><button id="changePwdBtn" class="btn-icon"><i class="fas fa-key"></i> change password</button> <button id="logoutAdminBtn" class="btn-icon" style="border-color:#ff4d6d"><i class="fas fa-sign-out-alt"></i> logout</button></div></div>
+      <div class="admin-form"><h4><i class="fas fa-link"></i> add new link</h4><input id="linkTitle" placeholder="Title *"><input id="linkUrl" placeholder="URL *"><textarea id="linkDesc" rows="2" placeholder="Description"></textarea><label>Thumbnail image (optional)</label><input type="file" id="linkImage" accept="image/*"><div id="linkImagePreview"></div><button id="submitLinkBtn" class="btn-primary">publish link</button></div>
+      <div class="admin-form"><h4><i class="fas fa-file-upload"></i> upload file</h4><input id="fileTitle" placeholder="Title *"><textarea id="fileDesc" rows="2" placeholder="Description"></textarea><label>File</label><input type="file" id="singleFileInput" class="file-input"><label>Thumbnail image (optional)</label><input type="file" id="fileImage" accept="image/*"><div id="fileImagePreview"></div><button id="submitFileBtn" class="btn-primary">upload file</button></div>
+      <div class="admin-form"><h4><i class="fas fa-layer-group"></i> multiple files</h4><input id="multiTitlePrefix" placeholder="Title prefix"><textarea id="multiDesc" rows="2" placeholder="Common description"></textarea><input type="file" id="multiFileInput" multiple class="file-input"><button id="submitMultiBtn" class="btn-primary">upload all</button></div>
+      <h3 style="margin:2rem 0 1rem">manage tools & content</h3><div id="adminPostsList"></div></div>`;
     await renderAdminPostsList(posts);
-    document.getElementById("submitLinkBtn")?.addEventListener("click", handleAddLink);
-    document.getElementById("submitFileBtn")?.addEventListener("click", handleAddFile);
+    document.getElementById("submitLinkBtn")?.addEventListener("click", () => handleAddLinkWithImage());
+    document.getElementById("submitFileBtn")?.addEventListener("click", () => handleAddFileWithImage());
     document.getElementById("submitMultiBtn")?.addEventListener("click", handleMultipleFiles);
     document.getElementById("logoutAdminBtn")?.addEventListener("click", () => { currentAdminLoggedIn = false; renderAdminZone(); renderPublicFeed(); });
     document.getElementById("changePwdBtn")?.addEventListener("click", handlePasswordChange);
+    // preview images
+    document.getElementById("linkImage")?.addEventListener("change", (e) => previewImage(e, "linkImagePreview"));
+    document.getElementById("fileImage")?.addEventListener("change", (e) => previewImage(e, "fileImagePreview"));
+  }
+
+  function previewImage(event, previewId) {
+    const file = event.target.files[0];
+    const preview = document.getElementById(previewId);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => { preview.innerHTML = `<img src="${e.target.result}" class="image-preview">`; };
+      reader.readAsDataURL(file);
+    } else { preview.innerHTML = ""; }
+  }
+
+  async function handleAddLinkWithImage() {
+    const title = document.getElementById("linkTitle")?.value.trim();
+    const url = document.getElementById("linkUrl")?.value.trim();
+    const desc = document.getElementById("linkDesc")?.value.trim();
+    const imageFile = document.getElementById("linkImage")?.files[0];
+    if (!title || !url) return alert("Title and URL required");
+    if (!url.startsWith("http")) return alert("Invalid URL");
+    let imageData = null;
+    if (imageFile) imageData = await readImageAsBlob(imageFile);
+    await addPost({ type: "link", title, description: desc || "", url, imageData, createdAt: Date.now() });
+    document.getElementById("linkTitle").value = "";
+    document.getElementById("linkUrl").value = "";
+    document.getElementById("linkDesc").value = "";
+    document.getElementById("linkImage").value = "";
+    document.getElementById("linkImagePreview").innerHTML = "";
+    renderAdminZone();
+    renderPublicFeed();
+  }
+
+  async function handleAddFileWithImage() {
+    const title = document.getElementById("fileTitle")?.value.trim();
+    const desc = document.getElementById("fileDesc")?.value.trim();
+    const file = document.getElementById("singleFileInput").files[0];
+    const imageFile = document.getElementById("fileImage")?.files[0];
+    if (!title || !file) return alert("Title and file required");
+    let imageData = null;
+    if (imageFile) imageData = await readImageAsBlob(imageFile);
+    const fileData = { name: file.name, size: file.size, type: file.type, blob: file };
+    await addPost({ type: "file", title, description: desc || "", fileData, imageData, createdAt: Date.now() });
+    document.getElementById("fileTitle").value = "";
+    document.getElementById("fileDesc").value = "";
+    document.getElementById("singleFileInput").value = "";
+    document.getElementById("fileImage").value = "";
+    document.getElementById("fileImagePreview").innerHTML = "";
+    renderAdminZone();
+    renderPublicFeed();
   }
 
   async function renderAdminPostsList(posts){
     const listDiv=document.getElementById("adminPostsList"); if(!posts.length){ listDiv.innerHTML=`<div class="loading-state">no tools yet</div>`; return; }
     let html='';
     for(const post of posts){
-      html+=`<div class="admin-tool-card"><div class="tool-header"><div class="tool-title"><i class="fas ${post.type==='link'?'fa-link':'fa-file-alt'}"></i> ${escapeHtml(post.title)}</div><div class="tool-actions"><button class="btn-icon edit-post" data-id="${post.id}" data-type="${post.type}"><i class="fas fa-edit"></i> edit</button><button class="btn-icon btn-danger delete-post" data-id="${post.id}"><i class="fas fa-trash-alt"></i> delete</button></div></div>${post.description?`<div class="tool-desc">${escapeHtml(post.description)}</div>`:''}<div class="tool-stats"><span><i class="fas fa-download"></i> Downloads: ${post.downloads||0}</span><span><i class="fas fa-star"></i> Rating: ${(post.rating||0).toFixed(1)}</span></div></div>`;
+      const thumb = post.imageData ? `<img src="${post.imageData}" style="max-height:60px; border-radius:0.5rem; margin-right:0.5rem;">` : '';
+      html+=`<div class="admin-tool-card"><div class="tool-header"><div class="tool-title">${thumb}<i class="fas ${post.type==='link'?'fa-link':'fa-file-alt'}"></i> ${escapeHtml(post.title)}</div><div class="tool-actions"><button class="btn-icon edit-post" data-id="${post.id}" data-type="${post.type}"><i class="fas fa-edit"></i> edit</button><button class="btn-icon btn-danger delete-post" data-id="${post.id}"><i class="fas fa-trash-alt"></i> delete</button></div></div>${post.description?`<div class="tool-desc">${escapeHtml(post.description)}</div>`:''}<div class="tool-stats"><span><i class="fas fa-download"></i> Downloads: ${post.downloads||0}</span><span><i class="fas fa-star"></i> Rating: ${(post.rating||0).toFixed(1)}</span></div></div>`;
     }
     listDiv.innerHTML=html;
     document.querySelectorAll(".delete-post").forEach(btn=>btn.addEventListener("click",async()=>{ if(confirm("Delete?")){ await deletePostById(Number(btn.dataset.id)); renderAdminZone(); renderPublicFeed(); } }));
@@ -527,52 +614,63 @@
     let newDownloads=parseInt(prompt("Downloads count:",post.downloads||0))||0;
     let newRating=parseFloat(prompt("Rating (0-5):",post.rating||0))||0; if(newRating<0)newRating=0; if(newRating>5)newRating=5;
     let updateObj={title:newTitle.trim(),description:newDesc.trim(),downloads:newDownloads,rating:newRating};
-    if(type==="link"){ const newUrl=prompt("Edit URL:",post.url); if(!newUrl?.startsWith("http"))return alert("Invalid URL"); updateObj.url=newUrl.trim(); }
-    await updatePost(id,updateObj); renderAdminZone(); renderPublicFeed();
+    if(type==="link"){
+      const newUrl=prompt("Edit URL:",post.url);
+      if(!newUrl?.startsWith("http"))return alert("Invalid URL");
+      updateObj.url=newUrl.trim();
+    }
+    // ask for new image
+    const changeImage = confirm("Do you want to change the thumbnail image? (OK = choose new image, Cancel = keep current)");
+    if(changeImage){
+      const fileInput = document.createElement("input");
+      fileInput.type = "file";
+      fileInput.accept = "image/*";
+      fileInput.onchange = async (e) => {
+        const file = e.target.files[0];
+        if(file){
+          const imageData = await readImageAsBlob(file);
+          updateObj.imageData = imageData;
+        } else {
+          updateObj.imageData = null;
+        }
+        await updatePost(id, updateObj);
+        renderAdminZone();
+        renderPublicFeed();
+      };
+      fileInput.click();
+      return;
+    }
+    await updatePost(id,updateObj);
+    renderAdminZone();
+    renderPublicFeed();
   }
 
-  async function handleAddLink(){ const t=document.getElementById("linkTitle")?.value.trim(); const u=document.getElementById("linkUrl")?.value.trim(); const d=document.getElementById("linkDesc")?.value.trim(); if(!t||!u)return alert("Required"); if(!u.startsWith("http"))return alert("Invalid URL"); await addPost({type:"link",title:t,description:d||"",url:u,createdAt:Date.now()}); document.getElementById("linkTitle").value=""; document.getElementById("linkUrl").value=""; document.getElementById("linkDesc").value=""; renderAdminZone(); renderPublicFeed(); }
-  async function handleAddFile(){ const t=document.getElementById("fileTitle")?.value.trim(); const d=document.getElementById("fileDesc")?.value.trim(); const f=document.getElementById("singleFileInput").files[0]; if(!t||!f)return alert("Title and file required"); await addPost({type:"file",title:t,description:d||"",fileData:{name:f.name,size:f.size,type:f.type,blob:f},createdAt:Date.now()}); document.getElementById("fileTitle").value=""; document.getElementById("fileDesc").value=""; document.getElementById("singleFileInput").value=""; renderAdminZone(); renderPublicFeed(); }
-  async function handleMultipleFiles(){ const pfx=document.getElementById("multiTitlePrefix")?.value.trim(); const cd=document.getElementById("multiDesc")?.value.trim()||""; const files=Array.from(document.getElementById("multiFileInput").files); if(!files.length)return alert("Select files"); for(const f of files){ let title=pfx?`${pfx} - ${f.name}`:f.name; if(title.length>80)title=title.slice(0,77)+"..."; await addPost({type:"file",title,description:cd,fileData:{name:f.name,size:f.size,type:f.type,blob:f},createdAt:Date.now()}); } document.getElementById("multiTitlePrefix").value=""; document.getElementById("multiDesc").value=""; document.getElementById("multiFileInput").value=""; alert(`✅ ${files.length} file(s) posted`); renderAdminZone(); renderPublicFeed(); }
+  async function handleMultipleFiles(){ const pfx=document.getElementById("multiTitlePrefix")?.value.trim(); const cd=document.getElementById("multiDesc")?.value.trim()||""; const files=Array.from(document.getElementById("multiFileInput").files); if(!files.length)return alert("Select files"); for(const f of files){ let title=pfx?`${pfx} - ${f.name}`:f.name; if(title.length>80)title=title.slice(0,77)+"..."; const fileData={name:f.name,size:f.size,type:f.type,blob:f}; await addPost({type:"file",title,description:cd,fileData,createdAt:Date.now()}); } document.getElementById("multiTitlePrefix").value=""; document.getElementById("multiDesc").value=""; document.getElementById("multiFileInput").value=""; alert(`✅ ${files.length} file(s) posted`); renderAdminZone(); renderPublicFeed(); }
   async function handlePasswordChange(){ const old=prompt("Current password:"); if(old!==localStorage.getItem(STORED_PASSWORD_KEY))return alert("Wrong password"); const np=prompt("New password (min 4 chars):"); if(!np||np.length<4)return alert("Min 4 chars"); if(np!==prompt("Confirm new password:"))return alert("Mismatch"); localStorage.setItem(STORED_PASSWORD_KEY,np); alert("Password changed!"); }
 
-  // Sidebar logic
   function initSidebar() {
     const hamburger = document.getElementById("hamburgerBtn");
     const sidebar = document.getElementById("sidebar");
     const overlay = document.getElementById("sidebarOverlay");
     const closeBtn = document.getElementById("closeSidebarBtn");
-
-    function openSidebar() {
-      sidebar.classList.add("open");
-      overlay.classList.add("active");
-    }
-    function closeSidebar() {
-      sidebar.classList.remove("open");
-      overlay.classList.remove("active");
-    }
+    function openSidebar() { sidebar.classList.add("open"); overlay.classList.add("active"); }
+    function closeSidebar() { sidebar.classList.remove("open"); overlay.classList.remove("active"); }
     hamburger.onclick = openSidebar;
     closeBtn.onclick = closeSidebar;
     overlay.onclick = closeSidebar;
-
     const pubBtn = document.getElementById("sidebarPublicBtn");
     const adminBtn = document.getElementById("sidebarAdminBtn");
     const publicPanel = document.getElementById("publicPanel");
     const adminPanel = document.getElementById("adminPanel");
     const statsBlock = document.getElementById("statsBlock");
-
     function setActivePanel(panel) {
       if (panel === "public") {
-        pubBtn.classList.add("active");
-        adminBtn.classList.remove("active");
-        publicPanel.classList.remove("hidden");
-        adminPanel.classList.add("hidden");
+        pubBtn.classList.add("active"); adminBtn.classList.remove("active");
+        publicPanel.classList.remove("hidden"); adminPanel.classList.add("hidden");
         statsBlock.classList.remove("hidden");
       } else {
-        adminBtn.classList.add("active");
-        pubBtn.classList.remove("active");
-        adminPanel.classList.remove("hidden");
-        publicPanel.classList.add("hidden");
+        adminBtn.classList.add("active"); pubBtn.classList.remove("active");
+        adminPanel.classList.remove("hidden"); publicPanel.classList.add("hidden");
         statsBlock.classList.add("hidden");
         renderAdminZone();
       }
@@ -588,7 +686,7 @@
     await openDB();
     await renderPublicFeed();
     initSidebar();
-    renderAdminZone(); // preload but hidden
+    renderAdminZone();
   })();
 </script>
 </body>
