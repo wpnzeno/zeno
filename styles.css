@@ -1,4 +1,3 @@
-/* style.css */
 :root {
   --bg-gradient-start: #f8fafc;
   --bg-gradient-end: #eef2f6;
@@ -267,13 +266,6 @@ h1 {
 
 .form-group {
   margin-bottom: 0.75rem;
-}
-
-.form-group label {
-  display: block;
-  font-size: 0.8rem;
-  font-weight: 500;
-  margin-bottom: 0.25rem;
 }
 
 input, textarea, .file-input {
