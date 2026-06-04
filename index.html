@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>Zeno</title>
-  <!-- Favicon: purple lightning bolt (browser tab) -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23a855f7'%3E%3Cpath d='M13 2L3 14h8l-2 8 10-12h-8l2-8z'/%3E%3C/svg%3E">
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -165,19 +164,22 @@
     .section-header h2 { font-size: 1.8rem; display: flex; align-items: center; gap: 0.6rem; justify-content: center; }
     .section-header p { color: var(--text-muted); font-size: 0.85rem; }
 
-    /* SEARCH BAR – top right, never centered */
+    /* SEARCH BAR – top right */
     .search-container {
       display: flex;
       justify-content: flex-end;
+      align-items: center;
+      gap: 1rem;
       margin-bottom: 1.5rem;
       position: relative;
+      flex-wrap: wrap;
     }
     .search-input {
       background: rgba(0, 0, 0, 0.6);
       border: 2px solid var(--border-glow);
       border-radius: 60px;
       padding: 0.7rem 1.2rem;
-      width: 280px;
+      width: 260px;
       color: var(--text-light);
       font-size: 0.9rem;
       transition: all 0.3s ease;
@@ -194,11 +196,22 @@
       70% { box-shadow: 0 0 0 8px rgba(0, 224, 255, 0); border-color: #8a2be2; }
       100% { box-shadow: 0 0 0 0 rgba(0, 224, 255, 0); border-color: #00e0ff; }
     }
+    .refresh-btn {
+      background: rgba(0,224,255,0.15);
+      border: 1px solid var(--border-glow);
+      padding: 0.5rem 1rem;
+      border-radius: 60px;
+      color: var(--accent-primary);
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: 0.2s;
+    }
+    .refresh-btn:hover { background: var(--accent-primary); color: #0a0c15; }
     .search-suggestions {
       position: absolute;
       top: 100%;
       right: 0;
-      width: 280px;
+      width: 260px;
       background: rgba(10, 15, 30, 0.95);
       backdrop-filter: blur(12px);
       border: 1px solid var(--border-glow);
@@ -222,7 +235,6 @@
       background: rgba(0,224,255,0.2);
       color: white;
     }
-
     .admin-auth-container { margin-top: 5rem; }
     .posts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
     .post-card, .admin-tool-card {
@@ -283,7 +295,6 @@
     .image-preview { max-width: 100%; max-height: 120px; margin-top: 0.5rem; border-radius: 0.5rem; }
     .tool-stats { display: flex; gap: 1.5rem; margin: 0.8rem 0; font-size: 0.8rem; }
     .tool-actions { display: flex; gap: 0.8rem; margin-top: 0.5rem; }
-    .manage-posts-section { margin-top: 2rem; border-top: 1px solid rgba(0,224,255,0.2); padding-top: 1rem; }
     .manage-posts-toggle {
       width: 100%;
       background: rgba(0,224,255,0.15);
@@ -319,6 +330,7 @@
       .main-content { padding: 1rem; }
       .stats { gap: 1.5rem; }
       .stat-number { font-size: 1.5rem; }
+      .search-container { justify-content: space-between; }
       .search-input { width: 100%; }
       .search-suggestions { width: 100%; }
     }
@@ -356,9 +368,9 @@
 
   <div id="publicPanel" class="panel">
     <div class="section-header"><h2><i class="fas fa-archive"></i> Contents</h2><p>downloadable resources</p></div>
-    <!-- SEARCH BAR (top right) -->
     <div class="search-container">
       <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search posts...">
+      <button id="refreshFeedBtn" class="refresh-btn"><i class="fas fa-sync-alt"></i> Refresh</button>
       <div id="searchSuggestions" class="search-suggestions"></div>
     </div>
     <div id="publicPostsContainer" class="posts-grid"><div class="loading-state"><i class="fas fa-spinner fa-pulse"></i> loading...</div></div>
@@ -379,7 +391,7 @@
 </div>
 
 <script>
-  // ========== FULL JAVASCRIPT WITH SEARCH AND FAVICON ==========
+  // ========== FIXED: posts now load reliably on mobile ==========
   const DB_NAME = "PrivateArchiveDB";
   const DB_VERSION = 7;
   const STORE_NAME = "posts";
@@ -397,7 +409,7 @@
     return new Promise((resolve, reject) => {
       if (dbInstance && dbInstance.name === DB_NAME) return resolve(dbInstance);
       const request = indexedDB.open(DB_NAME, DB_VERSION);
-      request.onerror = () => reject(request.error);
+      request.onerror = (e) => { console.error("IndexedDB error", e); reject(request.error); };
       request.onsuccess = () => { dbInstance = request.result; resolve(dbInstance); };
       request.onupgradeneeded = (e) => {
         const db = e.target.result;
@@ -445,7 +457,6 @@
     });
   }
 
-  // ---------- SEARCH LOGIC ----------
   let allPostsCache = [];
 
   function renderFilteredPosts(posts) {
@@ -568,12 +579,14 @@
           btn?.addEventListener("click", async () => { await incrementDownloads(post.id); downloadFileFromPost(post); renderPublicFeed(); });
         }
       }
-    } catch(err){ container.innerHTML=`<div class="loading-state">⚠️ error</div>`; }
+    } catch(err) { 
+      console.error(err);
+      container.innerHTML = `<div class="loading-state">⚠️ error loading posts: ${err.message}<br>Try the Refresh button</div>`;
+    }
   }
 
   function downloadFileFromPost(post){ if(!post.fileData?.blob)return; const a=document.createElement("a"); a.href=URL.createObjectURL(post.fileData.blob); a.download=post.fileData.name; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
 
-  // Admin zone (unchanged)
   async function renderAdminZone() {
     const container = document.getElementById("adminContentArea");
     if (!container) return;
@@ -776,6 +789,7 @@
         pubBtn.classList.add("active"); adminBtn.classList.remove("active");
         publicPanel.classList.remove("hidden"); adminPanel.classList.add("hidden");
         statsBlock.classList.remove("hidden");
+        renderPublicFeed(); // force refresh when switching to public
       } else {
         adminBtn.classList.add("active"); pubBtn.classList.remove("active");
         adminPanel.classList.remove("hidden"); publicPanel.classList.add("hidden");
@@ -809,6 +823,8 @@
         suggestions.classList.remove("show");
       }
     });
+    const refreshBtn = document.getElementById("refreshFeedBtn");
+    if (refreshBtn) refreshBtn.onclick = () => renderPublicFeed();
   }
 
   (async () => {
