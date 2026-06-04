@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>Zeno </title>
+  <title>Zeno</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
@@ -49,6 +49,15 @@
       align-items: center;
     }
     .hamburger:hover { color: white; text-shadow: 0 0 8px var(--accent-primary); }
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .logo-area i {
+      color: #a855f7;
+      font-size: 1.6rem;
+    }
     .logo-area h1 {
       font-size: 1.5rem;
       background: linear-gradient(135deg, #fff, var(--accent-primary), var(--accent-secondary));
@@ -153,6 +162,65 @@
     .section-header { margin-top: 1rem; margin-bottom: 2rem; text-align: center; }
     .section-header h2 { font-size: 1.8rem; display: flex; align-items: center; gap: 0.6rem; justify-content: center; }
     .section-header p { color: var(--text-muted); font-size: 0.85rem; }
+
+    /* SEARCH BAR STYLES */
+    .search-container {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+    .search-input {
+      background: rgba(0, 0, 0, 0.6);
+      border: 2px solid var(--border-glow);
+      border-radius: 60px;
+      padding: 0.7rem 1.2rem;
+      width: 280px;
+      color: var(--text-light);
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+      outline: none;
+      backdrop-filter: blur(4px);
+    }
+    .search-input:focus {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 12px var(--accent-primary), inset 0 0 4px var(--accent-primary);
+      animation: borderPulse 1.2s infinite;
+    }
+    @keyframes borderPulse {
+      0% { box-shadow: 0 0 0 0 rgba(0, 224, 255, 0.4); border-color: #00e0ff; }
+      70% { box-shadow: 0 0 0 8px rgba(0, 224, 255, 0); border-color: #8a2be2; }
+      100% { box-shadow: 0 0 0 0 rgba(0, 224, 255, 0); border-color: #00e0ff; }
+    }
+    .search-suggestions {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      width: 280px;
+      background: rgba(10, 15, 30, 0.95);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-glow);
+      border-radius: 1rem;
+      margin-top: 0.5rem;
+      max-height: 250px;
+      overflow-y: auto;
+      z-index: 50;
+      display: none;
+    }
+    .search-suggestions.show { display: block; }
+    .suggestion-item {
+      padding: 0.7rem 1rem;
+      cursor: pointer;
+      transition: 0.2s;
+      border-bottom: 1px solid rgba(0,224,255,0.1);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .suggestion-item:hover {
+      background: rgba(0,224,255,0.2);
+      color: white;
+    }
+
     .admin-auth-container { margin-top: 5rem; }
     .posts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
     .post-card, .admin-tool-card {
@@ -227,10 +295,7 @@
       transition: 0.2s;
     }
     .manage-posts-toggle:hover { background: var(--accent-primary); color: #0a0c15; }
-    /* Hide forms when manage view is active */
-    .admin-forms-wrapper.hide-forms {
-      display: none;
-    }
+    .admin-forms-wrapper.hide-forms { display: none; }
     .manage-posts-back-btn {
       background: rgba(0,224,255,0.15);
       border: 1px solid var(--border-glow);
@@ -252,13 +317,18 @@
       .main-content { padding: 1rem; }
       .stats { gap: 1.5rem; }
       .stat-number { font-size: 1.5rem; }
+      .search-input { width: 100%; }
+      .search-suggestions { width: 100%; }
     }
   </style>
 </head>
 <body>
 <div class="top-bar">
   <button class="hamburger" id="hamburgerBtn"><i class="fas fa-bars"></i></button>
-  <div class="logo-area"><h1>Zeno</h1></div>
+  <div class="logo-area">
+    <i class="fas fa-bolt"></i>
+    <h1>Zeno</h1>
+  </div>
   <div style="width: 40px;"></div>
 </div>
 
@@ -284,6 +354,11 @@
 
   <div id="publicPanel" class="panel">
     <div class="section-header"><h2><i class="fas fa-archive"></i> Contents</h2><p>downloadable resources</p></div>
+    <!-- SEARCH BAR (top right) -->
+    <div class="search-container">
+      <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search posts...">
+      <div id="searchSuggestions" class="search-suggestions"></div>
+    </div>
     <div id="publicPostsContainer" class="posts-grid"><div class="loading-state"><i class="fas fa-spinner fa-pulse"></i> loading...</div></div>
   </div>
 
@@ -302,7 +377,7 @@
 </div>
 
 <script>
-  // ========== FULL JAVASCRIPT WITH MANAGED VIEW (hide forms, show back button) ==========
+  // ========== FULL JAVASCRIPT WITH SEARCH ==========
   const DB_NAME = "PrivateArchiveDB";
   const DB_VERSION = 7;
   const STORE_NAME = "posts";
@@ -368,13 +443,98 @@
     });
   }
 
+  // ---------- SEARCH LOGIC ----------
+  let allPostsCache = [];
+
+  // Render either full feed or filtered feed
+  function renderFilteredPosts(posts) {
+    const container = document.getElementById("publicPostsContainer");
+    if (!posts.length) {
+      container.innerHTML = `<div class="loading-state"><i class="fas fa-search"></i> no posts match</div>`;
+      return;
+    }
+    let html = '';
+    for (const post of posts) {
+      const thumb = post.imageData ? `<img src="${post.imageData}" class="post-thumbnail" alt="thumbnail">` : '';
+      if (post.type === "link") {
+        html += `<div class="post-card">
+          ${thumb}
+          <div class="post-title"><i class="fas fa-link"></i> ${escapeHtml(post.title)}</div>
+          ${post.description ? `<div class="post-description">${escapeHtml(post.description)}</div>` : ''}
+          <div class="post-meta">
+            <span><i class="fas fa-download"></i> ${post.downloads||0}</span>
+            <a href="#" class="btn-icon open-link" data-id="${post.id}" data-url="${escapeHtml(post.url)}"><i class="fas fa-external-link-alt"></i> open</a>
+          </div>
+        </div>`;
+      } else {
+        html += `<div class="post-card">
+          ${thumb}
+          <div class="post-title"><i class="fas fa-file-alt"></i> ${escapeHtml(post.title)}</div>
+          ${post.description ? `<div class="post-description">${escapeHtml(post.description)}</div>` : ''}
+          <div class="post-meta">
+            <span><i class="fas fa-download"></i> ${post.downloads||0}</span>
+            <button class="btn-icon download-file" data-id="${post.id}"><i class="fas fa-download"></i> download</button>
+          </div>
+        </div>`;
+      }
+    }
+    container.innerHTML = html;
+    // re‑attach event handlers for filtered posts
+    for (const post of posts) {
+      if (post.type === "link") {
+        const btn = container.querySelector(`.open-link[data-id="${post.id}"]`);
+        btn?.addEventListener("click", async (e) => { e.preventDefault(); await incrementDownloads(post.id); window.open(btn.dataset.url,'_blank'); renderPublicFeed(); });
+      } else if (post.type === "file" && post.fileData?.blob) {
+        const btn = container.querySelector(`.download-file[data-id="${post.id}"]`);
+        btn?.addEventListener("click", async () => { await incrementDownloads(post.id); downloadFileFromPost(post); renderPublicFeed(); });
+      }
+    }
+  }
+
+  async function renderSearchSuggestions(query) {
+    const suggestionsDiv = document.getElementById("searchSuggestions");
+    if (!query.trim()) {
+      suggestionsDiv.classList.remove("show");
+      return;
+    }
+    const lowerQuery = query.toLowerCase();
+    const matches = allPostsCache.filter(post => post.title.toLowerCase().includes(lowerQuery)).slice(0, 8);
+    if (matches.length === 0) {
+      suggestionsDiv.classList.remove("show");
+      return;
+    }
+    let html = '';
+    for (const post of matches) {
+      html += `<div class="suggestion-item" data-id="${post.id}">${escapeHtml(post.title)}</div>`;
+    }
+    suggestionsDiv.innerHTML = html;
+    suggestionsDiv.classList.add("show");
+    // attach click events to suggestions
+    document.querySelectorAll(".suggestion-item").forEach(item => {
+      item.addEventListener("click", () => {
+        const postId = parseInt(item.dataset.id);
+        const selectedPost = allPostsCache.find(p => p.id === postId);
+        if (selectedPost) {
+          document.getElementById("searchInput").value = selectedPost.title;
+          renderFilteredPosts([selectedPost]);
+          suggestionsDiv.classList.remove("show");
+        }
+      });
+    });
+  }
+
+  // Modified renderPublicFeed to store cache and attach search events
   async function renderPublicFeed() {
     const container = document.getElementById("publicPostsContainer");
     if (!container) return;
     try {
       const posts = await getAllPosts();
+      allPostsCache = posts;
       await updateStats();
-      if (!posts.length) { container.innerHTML = `<div class="loading-state"><i class="fas fa-inbox"></i> nothing posted yet</div>`; return; }
+      if (!posts.length) {
+        container.innerHTML = `<div class="loading-state"><i class="fas fa-inbox"></i> nothing posted yet</div>`;
+        return;
+      }
       let html = '';
       for (const post of posts) {
         const thumb = post.imageData ? `<img src="${post.imageData}" class="post-thumbnail" alt="thumbnail">` : '';
@@ -400,21 +560,22 @@
           </div>`;
         }
       }
-      container.innerHTML=html;
+      container.innerHTML = html;
       for (const post of posts) {
-        if(post.type==="link"){
-          const btn=container.querySelector(`.open-link[data-id="${post.id}"]`);
-          btn?.addEventListener("click", async (e)=>{ e.preventDefault(); await incrementDownloads(post.id); window.open(btn.dataset.url,'_blank'); renderPublicFeed(); });
-        } else if(post.type==="file" && post.fileData?.blob){
-          const btn=container.querySelector(`.download-file[data-id="${post.id}"]`);
-          btn?.addEventListener("click", async ()=>{ await incrementDownloads(post.id); downloadFileFromPost(post); renderPublicFeed(); });
+        if (post.type === "link") {
+          const btn = container.querySelector(`.open-link[data-id="${post.id}"]`);
+          btn?.addEventListener("click", async (e) => { e.preventDefault(); await incrementDownloads(post.id); window.open(btn.dataset.url,'_blank'); renderPublicFeed(); });
+        } else if (post.type === "file" && post.fileData?.blob) {
+          const btn = container.querySelector(`.download-file[data-id="${post.id}"]`);
+          btn?.addEventListener("click", async () => { await incrementDownloads(post.id); downloadFileFromPost(post); renderPublicFeed(); });
         }
       }
     } catch(err){ container.innerHTML=`<div class="loading-state">⚠️ error</div>`; }
   }
+
   function downloadFileFromPost(post){ if(!post.fileData?.blob)return; const a=document.createElement("a"); a.href=URL.createObjectURL(post.fileData.blob); a.download=post.fileData.name; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
 
-  // Admin zone with manage view toggling
+  // Admin zone (unchanged except search init)
   async function renderAdminZone() {
     const container = document.getElementById("adminContentArea");
     if (!container) return;
@@ -431,7 +592,7 @@
           <div><button id="changePwdBtn" class="btn-icon"><i class="fas fa-key"></i> change password</button> <button id="logoutAdminBtn" class="btn-icon" style="border-color:#ff4d6d"><i class="fas fa-sign-out-alt"></i> logout</button></div>
         </div>
         
-        <!-- Wrapper for forms (hidden when in manage view) -->
+        <!-- Wrapper for forms -->
         <div id="adminFormsWrapper" class="admin-forms-wrapper">
           <div class="admin-form"><h4><i class="fas fa-link"></i> add new link</h4><input id="linkTitle" placeholder="Title *"><input id="linkUrl" placeholder="URL *"><textarea id="linkDesc" rows="2" placeholder="Description"></textarea><label>Thumbnail image (optional)</label><input type="file" id="linkImage" accept="image/*"><div id="linkImagePreview"></div><button id="submitLinkBtn" class="btn-primary">publish link</button></div>
           <div class="admin-form"><h4><i class="fas fa-file-upload"></i> upload file</h4><input id="fileTitle" placeholder="Title *"><textarea id="fileDesc" rows="2" placeholder="Description"></textarea><label>File</label><input type="file" id="singleFileInput" class="file-input"><label>Thumbnail image (optional)</label><input type="file" id="fileImage" accept="image/*"><div id="fileImagePreview"></div><button id="submitFileBtn" class="btn-primary">upload file</button></div>
@@ -447,27 +608,22 @@
         </div>
       </div>`;
     
-    // Attach form events
     document.getElementById("submitLinkBtn")?.addEventListener("click", () => handleAddLinkWithImage());
     document.getElementById("submitFileBtn")?.addEventListener("click", () => handleAddFileWithImage());
     document.getElementById("submitMultiBtn")?.addEventListener("click", handleMultipleFiles);
     document.getElementById("logoutAdminBtn")?.addEventListener("click", () => { currentAdminLoggedIn = false; renderAdminZone(); renderPublicFeed(); });
     document.getElementById("changePwdBtn")?.addEventListener("click", handlePasswordChange);
-    // Image previews
     document.getElementById("linkImage")?.addEventListener("change", (e) => previewImage(e, "linkImagePreview"));
     document.getElementById("fileImage")?.addEventListener("change", (e) => previewImage(e, "fileImagePreview"));
     
-    // Manage posts toggle logic
     const formsWrapper = document.getElementById("adminFormsWrapper");
     const manageView = document.getElementById("managePostsView");
     const manageBtn = document.getElementById("managePostsToggleBtn");
     const backBtn = document.getElementById("backToHomeBtn");
     
-    // Function to show manage view and hide forms
     function showManageView() {
       formsWrapper.style.display = "none";
       manageView.style.display = "block";
-      // refresh post list every time it's shown
       renderAdminPostsList(posts);
     }
     function showHomeView() {
@@ -476,10 +632,7 @@
     }
     manageBtn?.addEventListener("click", showManageView);
     backBtn?.addEventListener("click", showHomeView);
-    
-    // Initially ensure home view is visible
     showHomeView();
-    // Pre-render post list in the manage view
     renderAdminPostsList(posts);
   }
 
@@ -642,12 +795,38 @@
     setActivePanel("public");
   }
 
+  // Attach search input events after everything is loaded
+  function initSearch() {
+    const searchInput = document.getElementById("searchInput");
+    if (!searchInput) return;
+    searchInput.addEventListener("input", (e) => {
+      const query = e.target.value;
+      if (query.trim() === "") {
+        renderPublicFeed();
+        document.getElementById("searchSuggestions").classList.remove("show");
+      } else {
+        renderSearchSuggestions(query);
+        // live filter: show posts containing the query
+        const filtered = allPostsCache.filter(post => post.title.toLowerCase().includes(query.toLowerCase()));
+        renderFilteredPosts(filtered);
+      }
+    });
+    // Close suggestions when clicking outside
+    document.addEventListener("click", (e) => {
+      const suggestions = document.getElementById("searchSuggestions");
+      if (!searchInput.contains(e.target) && !suggestions.contains(e.target)) {
+        suggestions.classList.remove("show");
+      }
+    });
+  }
+
   (async () => {
     initPassword();
     await openDB();
     await renderPublicFeed();
     initSidebar();
     renderAdminZone();
+    initSearch();
   })();
 </script>
 </body>
