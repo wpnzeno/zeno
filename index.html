@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title> Zeno </title>
+  <title>Zeno | Hamburger Sidebar</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
@@ -213,9 +213,9 @@
       color: var(--text-muted);
       font-size: 0.85rem;
     }
-    /* extra spacing for admin authentication form */
+    /* extra spacing for admin authentication form (moved downward) */
     .admin-auth-container {
-      margin-top: 2.5rem;
+      margin-top: 5rem;   /* increased from 2.5rem to move it lower */
     }
     .posts-grid {
       display: grid;
@@ -494,7 +494,7 @@
     const container = document.getElementById("adminContentArea");
     if (!container) return;
     if (!currentAdminLoggedIn) {
-      // added extra margin via a wrapper div with class "admin-auth-container"
+      // moved downward via admin-auth-container class (margin-top: 5rem)
       container.innerHTML = `<div class="admin-auth-container"><div style="max-width:420px; margin:0 auto; text-align:center"><i class="fas fa-fingerprint" style="font-size:2.5rem; color:#00e0ff"></i><h3>admin authentication</h3><p style="font-size:0.8rem">only the owner can manage tools</p><div style="background:rgba(0,0,0,0.5); padding:1.5rem; border-radius:1.5rem"><input type="password" id="adminPassInput" placeholder="master password" style="width:100%; margin-bottom:1rem"><button id="adminLoginBtn" class="btn-primary" style="width:100%"><i class="fas fa-unlock-alt"></i> unlock</button></div></div></div>`;
       document.getElementById("adminLoginBtn")?.addEventListener("click", () => { if(document.getElementById("adminPassInput").value.trim() === localStorage.getItem(STORED_PASSWORD_KEY)) { currentAdminLoggedIn = true; renderAdminZone(); renderPublicFeed(); } else alert("❌ wrong password"); });
       return;
@@ -580,7 +580,6 @@
     }
     pubBtn.onclick = () => setActivePanel("public");
     adminBtn.onclick = () => setActivePanel("admin");
-    // ensure correct initial state (sidebar closed, public active)
     setActivePanel("public");
   }
 
