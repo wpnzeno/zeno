@@ -5,7 +5,7 @@ const STORED_PASSWORD_KEY = "archive_admin_pass";
 const DEFAULT_PASSWORD = "admin123";
 
 let dbInstance = null;
-let currentAdminLoggedIn = false;
+let currentAdminLoggedIn = false; 
 
 // helpers
 function escapeHtml(str) {
