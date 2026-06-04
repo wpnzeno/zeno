@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>Zeno | Executors and Scripts</title>
+  <title>Zeno | Scripts and Executors</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23a855f7'%3E%3Cpath d='M13 2L3 14h8l-2 8 10-12h-8l2-8z'/%3E%3C/svg%3E">
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
-    /* (same CSS as before – no changes) */
+    /* === SAME CSS AS BEFORE – no changes === */
     :root { --bg-dark: #0a0c15; --bg-card: rgba(15, 20, 35, 0.7); --border-glow: rgba(0, 224, 255, 0.25); --accent-primary: #00e0ff; --accent-secondary: #8a2be2; --text-light: #f0f3ff; --text-muted: #a0a8c0; --danger: #ff4d6d; --sidebar-width: 280px; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Inter', sans-serif; background: radial-gradient(circle at 10% 20%, #0a0f1f, #03050b); color: var(--text-light); min-height: 100vh; overflow-x: hidden; }
@@ -117,16 +117,15 @@
 </div>
 
 <script>
-// ========== YOUR CONFIGURATION (already filled) ==========
-const GITHUB_TOKEN = "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";
+// ========== YOUR CONFIGURATION (TOKEN & GIST ID) ==========
+const GITHUB_TOKEN = "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";
 const GIST_ID      = "b116569a4992e42686aeeb78a4e087cc";
-// =======================================================
+// ==========================================================
 
-let useGitHub = true;  // always try GitHub first (fallback to local if fails)
+let useGitHub = true;
 let dbInstance = null;
 let currentAdminLoggedIn = false;
 
-// Helper functions
 function escapeHtml(str) { if (!str) return ""; return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m] || m)); }
 function formatFileSize(bytes) { if (!bytes) return "0 B"; const k=1024, sizes=["B","KB","MB","GB"]; const i=Math.floor(Math.log(bytes)/Math.log(k)); return parseFloat((bytes/Math.pow(k,i)).toFixed(1))+" "+sizes[i]; }
 function initPassword() { if (!localStorage.getItem("archive_admin_pass")) localStorage.setItem("archive_admin_pass", "Lordexploits@1_pn"); }
@@ -202,7 +201,7 @@ async function deletePostLocal(id) {
   });
 }
 
-// ---- GitHub Gist API (primary) ----
+// ---- GitHub Gist API ----
 async function getAllPostsGitHub() {
   const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
     headers: { Authorization: `token ${GITHUB_TOKEN}` }
@@ -306,7 +305,7 @@ function readImageAsBlob(file) {
   });
 }
 
-// ---- Rendering functions (unchanged) ----
+// ---- Rendering functions ----
 function renderFilteredPosts(posts) {
   const container = document.getElementById("publicPostsContainer");
   if (!posts.length) { container.innerHTML = `<div class="loading-state"><i class="fas fa-search"></i> no posts match</div>`; return; }
@@ -421,7 +420,7 @@ async function renderPublicFeed() {
 
 function downloadFileFromPost(post){ if(!post.fileData?.blob)return; const a=document.createElement("a"); a.href=URL.createObjectURL(post.fileData.blob); a.download=post.fileData.name; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
 
-// ---- Admin zone (same as before, uses unified CRUD) ----
+// ---- Admin zone ----
 async function renderAdminZone() {
   const container = document.getElementById("adminContentArea");
   if (!container) return;
