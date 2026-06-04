@@ -3,11 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>Zeno | Hamburger Sidebar</title>
+  <title> Zeno </title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
-    /* ---------- DARK NEON STYLE ---------- */
     :root {
       --bg-dark: #0a0c15;
       --bg-card: rgba(15, 20, 35, 0.7);
@@ -31,7 +30,7 @@
       min-height: 100vh;
       overflow-x: hidden;
     }
-    /* top bar with hamburger */
+    /* top bar */
     .top-bar {
       display: flex;
       justify-content: space-between;
@@ -54,7 +53,6 @@
       padding: 0.5rem;
       display: flex;
       align-items: center;
-      justify-content: center;
     }
     .hamburger:hover {
       color: white;
@@ -67,7 +65,7 @@
       -webkit-background-clip: text;
       color: transparent;
     }
-    /* sidebar overlay (hidden by default) */
+    /* sidebar overlay & sidebar */
     .sidebar-overlay {
       position: fixed;
       top: 0;
@@ -88,7 +86,7 @@
     .sidebar {
       position: fixed;
       top: 0;
-      left: -var(--sidebar-width);
+      left: calc(-1 * var(--sidebar-width));
       width: var(--sidebar-width);
       height: 100%;
       background: rgba(8, 12, 25, 0.95);
@@ -151,7 +149,7 @@
       max-width: 1300px;
       margin: 0 auto;
     }
-    /* stats block (initially visible) */
+    /* stats block */
     .stats-block {
       text-align: center;
       margin: 2rem 0;
@@ -214,6 +212,10 @@
     .section-header p {
       color: var(--text-muted);
       font-size: 0.85rem;
+    }
+    /* extra spacing for admin authentication form */
+    .admin-auth-container {
+      margin-top: 2.5rem;
     }
     .posts-grid {
       display: grid;
@@ -350,56 +352,54 @@
   </style>
 </head>
 <body>
-  <!-- Top bar with hamburger -->
-  <div class="top-bar">
-    <button class="hamburger" id="hamburgerBtn"><i class="fas fa-bars"></i></button>
-    <div class="logo-area"><h1>Zeno</h1></div>
-    <div style="width: 40px;"></div> <!-- spacer -->
+<div class="top-bar">
+  <button class="hamburger" id="hamburgerBtn"><i class="fas fa-bars"></i></button>
+  <div class="logo-area"><h1>Zeno</h1></div>
+  <div style="width: 40px;"></div>
+</div>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<div class="sidebar" id="sidebar">
+  <button class="close-sidebar" id="closeSidebarBtn"><i class="fas fa-times"></i></button>
+  <button id="sidebarPublicBtn" class="sidebar-btn active"><i class="fas fa-globe"></i> content</button>
+  <button id="sidebarAdminBtn" class="sidebar-btn"><i class="fas fa-user-shield"></i> admin</button>
+</div>
+
+<div class="main-content">
+  <!-- stats block (visible on public panel) -->
+  <div class="stats-block" id="statsBlock">
+    <div class="badge-group">
+      <span class="badge"><i class="fas fa-lock"></i> secure</span>
+      <span class="badge"><i class="fas fa-user-shield"></i> trusted</span>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="stat-number" id="statPosts">0</div><div class="stat-label">TOTAL POSTS</div></div>
+      <div class="stat"><div class="stat-number" id="statFiles">0</div><div class="stat-label">FILES</div></div>
+      <div class="stat"><div class="stat-number" id="statLinks">0</div><div class="stat-label">LINKS</div></div>
+    </div>
   </div>
 
-  <!-- Sidebar overlay & sidebar -->
-  <div class="sidebar-overlay" id="sidebarOverlay"></div>
-  <div class="sidebar" id="sidebar">
-    <button class="close-sidebar" id="closeSidebarBtn"><i class="fas fa-times"></i></button>
-    <button id="sidebarPublicBtn" class="sidebar-btn active"><i class="fas fa-globe"></i> content</button>
-    <button id="sidebarAdminBtn" class="sidebar-btn"><i class="fas fa-user-shield"></i> admin</button>
+  <div id="publicPanel" class="panel">
+    <div class="section-header"><h2><i class="fas fa-archive"></i> Contents</h2><p>downloadable resources</p></div>
+    <div id="publicPostsContainer" class="posts-grid"><div class="loading-state"><i class="fas fa-spinner fa-pulse"></i> loading...</div></div>
   </div>
 
-  <div class="main-content">
-    <!-- Stats block (hidden when admin panel active) -->
-    <div class="stats-block" id="statsBlock">
-      <div class="badge-group">
-        <span class="badge"><i class="fas fa-lock"></i> secure</span>
-        <span class="badge"><i class="fas fa-user-shield"></i> trusted</span>
-      </div>
-      <div class="stats">
-        <div class="stat"><div class="stat-number" id="statPosts">0</div><div class="stat-label">TOTAL POSTS</div></div>
-        <div class="stat"><div class="stat-number" id="statFiles">0</div><div class="stat-label">FILES</div></div>
-        <div class="stat"><div class="stat-number" id="statLinks">0</div><div class="stat-label">LINKS</div></div>
-      </div>
-    </div>
-
-    <div id="publicPanel" class="panel">
-      <div class="section-header"><h2><i class="fas fa-archive"></i> Contents</h2><p>downloadable resources</p></div>
-      <div id="publicPostsContainer" class="posts-grid"><div class="loading-state"><i class="fas fa-spinner fa-pulse"></i> loading...</div></div>
-    </div>
-
-    <div id="adminPanel" class="panel hidden">
-      <div class="section-header"><h2><i class="fas fa-crown"></i> admin panel</h2><p>manage tools & content</p></div>
-      <div id="adminContentArea" class="admin-dynamic"><div class="loading-state"><i class="fas fa-key"></i> verifying access...</div></div>
-    </div>
-
-    <footer>
-      <div class="footer-links">
-        <a href="https://youtube.com/@wpn-zeno" target="_blank"><i class="fab fa-youtube"></i> YouTube</a>
-        <a href="https://discord.com/invite/5PtRGz9mDY" target="_blank"><i class="fab fa-discord"></i> Discord</a>
-      </div>
-      <p>© 2026 – zeno · your trusted provider</p>
-    </footer>
+  <div id="adminPanel" class="panel hidden">
+    <div class="section-header"><h2><i class="fas fa-crown"></i> admin panel</h2><p>manage tools & content</p></div>
+    <div id="adminContentArea" class="admin-dynamic"><div class="loading-state"><i class="fas fa-key"></i> verifying access...</div></div>
   </div>
+
+  <footer>
+    <div class="footer-links">
+      <a href="https://youtube.com/@wpn-zeno" target="_blank"><i class="fab fa-youtube"></i> YouTube</a>
+      <a href="https://discord.com/invite/5PtRGz9mDY" target="_blank"><i class="fab fa-discord"></i> Discord</a>
+    </div>
+    <p>© 2026 – zeno · your trusted provider</p>
+  </footer>
+</div>
 
 <script>
-  // ========== FULL JAVASCRIPT (same logic, plus sidebar + stats hide) ==========
+  // ========== FULL JAVASCRIPT ==========
   const DB_NAME = "PrivateArchiveDB";
   const DB_VERSION = 6;
   const STORE_NAME = "posts";
@@ -494,7 +494,8 @@
     const container = document.getElementById("adminContentArea");
     if (!container) return;
     if (!currentAdminLoggedIn) {
-      container.innerHTML = `<div style="max-width:420px; margin:2rem auto; text-align:center"><i class="fas fa-fingerprint" style="font-size:2.5rem; color:#00e0ff"></i><h3>admin authentication</h3><p style="font-size:0.8rem">only the owner can manage tools</p><div style="background:rgba(0,0,0,0.5); padding:1.5rem; border-radius:1.5rem"><input type="password" id="adminPassInput" placeholder="master password" style="width:100%; margin-bottom:1rem"><button id="adminLoginBtn" class="btn-primary" style="width:100%"><i class="fas fa-unlock-alt"></i> unlock</button></div></div>`;
+      // added extra margin via a wrapper div with class "admin-auth-container"
+      container.innerHTML = `<div class="admin-auth-container"><div style="max-width:420px; margin:0 auto; text-align:center"><i class="fas fa-fingerprint" style="font-size:2.5rem; color:#00e0ff"></i><h3>admin authentication</h3><p style="font-size:0.8rem">only the owner can manage tools</p><div style="background:rgba(0,0,0,0.5); padding:1.5rem; border-radius:1.5rem"><input type="password" id="adminPassInput" placeholder="master password" style="width:100%; margin-bottom:1rem"><button id="adminLoginBtn" class="btn-primary" style="width:100%"><i class="fas fa-unlock-alt"></i> unlock</button></div></div></div>`;
       document.getElementById("adminLoginBtn")?.addEventListener("click", () => { if(document.getElementById("adminPassInput").value.trim() === localStorage.getItem(STORED_PASSWORD_KEY)) { currentAdminLoggedIn = true; renderAdminZone(); renderPublicFeed(); } else alert("❌ wrong password"); });
       return;
     }
@@ -535,7 +536,7 @@
   async function handleMultipleFiles(){ const pfx=document.getElementById("multiTitlePrefix")?.value.trim(); const cd=document.getElementById("multiDesc")?.value.trim()||""; const files=Array.from(document.getElementById("multiFileInput").files); if(!files.length)return alert("Select files"); for(const f of files){ let title=pfx?`${pfx} - ${f.name}`:f.name; if(title.length>80)title=title.slice(0,77)+"..."; await addPost({type:"file",title,description:cd,fileData:{name:f.name,size:f.size,type:f.type,blob:f},createdAt:Date.now()}); } document.getElementById("multiTitlePrefix").value=""; document.getElementById("multiDesc").value=""; document.getElementById("multiFileInput").value=""; alert(`✅ ${files.length} file(s) posted`); renderAdminZone(); renderPublicFeed(); }
   async function handlePasswordChange(){ const old=prompt("Current password:"); if(old!==localStorage.getItem(STORED_PASSWORD_KEY))return alert("Wrong password"); const np=prompt("New password (min 4 chars):"); if(!np||np.length<4)return alert("Min 4 chars"); if(np!==prompt("Confirm new password:"))return alert("Mismatch"); localStorage.setItem(STORED_PASSWORD_KEY,np); alert("Password changed!"); }
 
-  // Sidebar toggle logic
+  // Sidebar logic
   function initSidebar() {
     const hamburger = document.getElementById("hamburgerBtn");
     const sidebar = document.getElementById("sidebar");
@@ -554,7 +555,6 @@
     closeBtn.onclick = closeSidebar;
     overlay.onclick = closeSidebar;
 
-    // Panel switching inside sidebar
     const pubBtn = document.getElementById("sidebarPublicBtn");
     const adminBtn = document.getElementById("sidebarAdminBtn");
     const publicPanel = document.getElementById("publicPanel");
@@ -567,19 +567,20 @@
         adminBtn.classList.remove("active");
         publicPanel.classList.remove("hidden");
         adminPanel.classList.add("hidden");
-        statsBlock.classList.remove("hidden");   // show stats when on public
+        statsBlock.classList.remove("hidden");
       } else {
         adminBtn.classList.add("active");
         pubBtn.classList.remove("active");
         adminPanel.classList.remove("hidden");
         publicPanel.classList.add("hidden");
-        statsBlock.classList.add("hidden");      // hide stats when on admin
+        statsBlock.classList.add("hidden");
         renderAdminZone();
       }
-      closeSidebar(); // close sidebar after selection
+      closeSidebar();
     }
     pubBtn.onclick = () => setActivePanel("public");
     adminBtn.onclick = () => setActivePanel("admin");
+    // ensure correct initial state (sidebar closed, public active)
     setActivePanel("public");
   }
 
