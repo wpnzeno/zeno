@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>Private Archive | Admin Panel</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -29,24 +29,19 @@
     <button id="tabAdminBtn" class="tab-btn"><i class="fas fa-user-shield"></i> admin panel</button>
   </div>
 
+  <!-- Public Panel -->
   <div id="publicPanel" class="panel">
     <div class="section-header"><h2><i class="fas fa-archive"></i> archive vault</h2><p>read‑only resources</p></div>
     <div id="publicPostsContainer" class="posts-grid"><div class="loading-state"><i class="fas fa-spinner fa-pulse"></i> loading...</div></div>
   </div>
 
+  <!-- Admin Panel -->
   <div id="adminPanel" class="panel hidden">
     <div class="section-header"><h2><i class="fas fa-crown"></i> admin panel</h2><p>manage tools & content</p></div>
     <div id="adminContentArea" class="admin-dynamic"><div class="loading-state"><i class="fas fa-key"></i> verifying access...</div></div>
   </div>
 
-  <footer>
-    <div class="footer-links">
-      <a href="#"><i class="fab fa-twitter"></i> Twitter</a>
-      <a href="#"><i class="fab fa-discord"></i> Discord</a>
-      <a href="#"><i class="fas fa-database"></i> local storage</a>
-    </div>
-    <p>© 2025 – only you can post · data stored in your browser</p>
-  </footer>
+  <footer><div class="footer-links"><a href="#"><i class="fab fa-twitter"></i> Twitter</a><a href="#"><i class="fab fa-discord"></i> Discord</a><a href="#"><i class="fas fa-database"></i> local storage</a></div><p>© 2025 – only you can post · data stored in your browser</p></footer>
 </div>
 <script src="script.js"></script>
 </body>
