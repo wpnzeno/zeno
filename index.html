@@ -8,7 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
-    /* === Your complete CSS – unchanged (same as before) === */
+    /* === Your complete CSS – unchanged === */
     :root { --bg-dark: #0a0c15; --bg-card: rgba(15, 20, 35, 0.7); --border-glow: rgba(0, 224, 255, 0.25); --accent-primary: #00e0ff; --accent-secondary: #8a2be2; --text-light: #f0f3ff; --text-muted: #a0a8c0; --danger: #ff4d6d; --sidebar-width: 280px; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Inter', sans-serif; background: radial-gradient(circle at 10% 20%, #0a0f1f, #03050b); color: var(--text-light); min-height: 100vh; overflow-x: hidden; }
@@ -133,14 +133,16 @@ function initPassword() { if (!localStorage.getItem(STORED_PASSWORD_KEY)) localS
 function escapeHtml(str) { if (!str) return ""; return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m] || m)); }
 function formatFileSize(bytes) { if (!bytes) return "0 B"; const k=1024, sizes=["B","KB","MB","GB"]; const i=Math.floor(Math.log(bytes)/Math.log(k)); return parseFloat((bytes/Math.pow(k,i)).toFixed(1))+" "+sizes[i]; }
 
-// ---- JSONBin.io CRUD ----
+// ---- JSONBin.io CRUD (fixed: includes X-Master-Key for reads) ----
 async function getAllPostsRemote() {
   const url = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`;
-  const res = await fetch(url);
+  const res = await fetch(url, {
+    headers: { "X-Master-Key": JSONBIN_API_KEY }
+  });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
   let posts = data.record || [];
-  // If the bin still contains the dummy placeholder, ignore it and return empty array
+  // If the bin contains the dummy placeholder, ignore it and return empty array
   if (posts.length === 1 && posts[0].id === 0 && posts[0].title === "placeholder") {
     return [];
   }
