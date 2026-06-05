@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>Zeno | Scripts and Executors</title>
+  <title>Zeno | Cloud Sync (JSONBin)</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23a855f7'%3E%3Cpath d='M13 2L3 14h8l-2 8 10-12h-8l2-8z'/%3E%3C/svg%3E">
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
-    /* === SAME CSS AS BEFORE – no changes === */
+    /* === Your complete CSS – unchanged (same as before) === */
     :root { --bg-dark: #0a0c15; --bg-card: rgba(15, 20, 35, 0.7); --border-glow: rgba(0, 224, 255, 0.25); --accent-primary: #00e0ff; --accent-secondary: #8a2be2; --text-light: #f0f3ff; --text-muted: #a0a8c0; --danger: #ff4d6d; --sidebar-width: 280px; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Inter', sans-serif; background: radial-gradient(circle at 10% 20%, #0a0f1f, #03050b); color: var(--text-light); min-height: 100vh; overflow-x: hidden; }
@@ -105,7 +105,7 @@
       <button id="refreshFeedBtn" class="refresh-btn"><i class="fas fa-sync-alt"></i> Refresh</button>
       <div id="searchSuggestions" class="search-suggestions"></div>
     </div>
-    <div id="publicPostsContainer" class="posts-grid"><div class="loading-state"><i class="fas fa-spinner fa-pulse"></i> loading from GitHub...</div></div>
+    <div id="publicPostsContainer" class="posts-grid"><div class="loading-state"><i class="fas fa-spinner fa-pulse"></i> loading...</div></div>
   </div>
 
   <div id="adminPanel" class="panel hidden">
@@ -117,168 +117,87 @@
 </div>
 
 <script>
-// ========== YOUR CONFIGURATION (TOKEN & GIST ID) ==========
-const GITHUB_TOKEN = "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";
-const GIST_ID      = "1b12afbd741b0a24e085d4bc4a289f65";
-// ==========================================================
+// ========== JSONBIN.IO CONFIGURATION (YOUR VALUES) ==========
+const JSONBIN_BIN_ID = "6a227ac2da38895dfe8aead2";
+const JSONBIN_API_KEY = "$2a$10$uVYAHj5OEoLnL47Lc4xhr.rEUoRzwssHfo6Brs/yV3QuLafNxZ4nC";
+// ============================================================
 
-let useGitHub = true;
-let dbInstance = null;
 let currentAdminLoggedIn = false;
+let allPostsCache = [];
+
+// Password handling
+const STORED_PASSWORD_KEY = "archive_admin_pass";
+const DEFAULT_PASSWORD = "Lordexploits@1_pn";
+function initPassword() { if (!localStorage.getItem(STORED_PASSWORD_KEY)) localStorage.setItem(STORED_PASSWORD_KEY, DEFAULT_PASSWORD); }
 
 function escapeHtml(str) { if (!str) return ""; return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m] || m)); }
 function formatFileSize(bytes) { if (!bytes) return "0 B"; const k=1024, sizes=["B","KB","MB","GB"]; const i=Math.floor(Math.log(bytes)/Math.log(k)); return parseFloat((bytes/Math.pow(k,i)).toFixed(1))+" "+sizes[i]; }
-function initPassword() { if (!localStorage.getItem("archive_admin_pass")) localStorage.setItem("archive_admin_pass", "Lordexploits@1_pn"); }
 
-// ---- Local IndexedDB (fallback) ----
-function openDB() {
-  return new Promise((resolve, reject) => {
-    if (dbInstance && dbInstance.name === "LocalArchiveDB") return resolve(dbInstance);
-    const request = indexedDB.open("LocalArchiveDB", 1);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => { dbInstance = request.result; resolve(dbInstance); };
-    request.onupgradeneeded = (e) => {
-      const db = e.target.result;
-      if (!db.objectStoreNames.contains("posts")) {
-        db.createObjectStore("posts", { keyPath: "id", autoIncrement: true });
-      }
-    };
-  });
-}
-
-async function getAllPostsLocal() {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("posts", "readonly");
-    const store = tx.objectStore("posts");
-    const req = store.getAll();
-    req.onsuccess = () => {
-      let posts = req.result || [];
-      posts = posts.map(p => ({ ...p, downloads: p.downloads || 0, rating: p.rating || 0 }));
-      posts.sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
-      resolve(posts);
-    };
-    req.onerror = () => reject(req.error);
-  });
-}
-
-async function addPostLocal(postData) {
-  const db = await openDB();
-  postData.downloads = 0;
-  postData.rating = 0;
-  postData.createdAt = Date.now();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("posts", "readwrite");
-    const req = tx.objectStore("posts").add(postData);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-async function updatePostLocal(id, updatedData) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("posts", "readwrite");
-    const store = tx.objectStore("posts");
-    const getReq = store.get(id);
-    getReq.onsuccess = () => {
-      const old = getReq.result;
-      if (!old) reject("Post not found");
-      const merged = { ...old, ...updatedData, id: old.id };
-      store.put(merged).onsuccess = () => resolve();
-    };
-    getReq.onerror = () => reject(getReq.error);
-  });
-}
-
-async function deletePostLocal(id) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("posts", "readwrite");
-    const req = tx.objectStore("posts").delete(id);
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
-  });
-}
-
-// ---- GitHub Gist API ----
-async function getAllPostsGitHub() {
-  const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-    headers: { Authorization: `token ${GITHUB_TOKEN}` }
-  });
-  if (!res.ok) throw new Error(`GitHub error: ${res.status}`);
+// ---- JSONBin.io CRUD ----
+async function getAllPostsRemote() {
+  const url = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
-  const file = data.files["posts.json"];
-  if (!file) return [];
-  return JSON.parse(file.content);
+  let posts = data.record || [];
+  // If the bin still contains the dummy placeholder, ignore it and return empty array
+  if (posts.length === 1 && posts[0].id === 0 && posts[0].title === "placeholder") {
+    return [];
+  }
+  posts = posts.map(p => ({ ...p, downloads: p.downloads || 0, rating: p.rating || 0 }));
+  posts.sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+  return posts;
 }
 
-async function writeGist(postsArray) {
-  const content = JSON.stringify(postsArray, null, 2);
-  const body = { files: { "posts.json": { content } } };
-  const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-    method: "PATCH",
-    headers: { Authorization: `token ${GITHUB_TOKEN}`, "Content-Type": "application/json" },
-    body: JSON.stringify(body)
+async function writeAllPostsRemote(postsArray) {
+  const url = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Master-Key": JSONBIN_API_KEY
+    },
+    body: JSON.stringify(postsArray)
   });
-  if (!res.ok) throw new Error(`GitHub write failed: ${res.status}`);
+  if (!res.ok) throw new Error(`Write failed: ${res.status}`);
 }
 
-// ---- Unified CRUD (GitHub first, fallback to local) ----
-let allPostsCache = [];
-
+// ---- Unified API ----
 async function getAllPosts() {
-  if (useGitHub) {
-    try {
-      const posts = await getAllPostsGitHub();
-      allPostsCache = posts;
-      return posts;
-    } catch (err) {
-      console.warn("GitHub read failed, falling back to local storage", err);
-      useGitHub = false;
-      return await getAllPostsLocal();
-    }
-  } else {
-    return await getAllPostsLocal();
+  try {
+    const posts = await getAllPostsRemote();
+    allPostsCache = posts;
+    return posts;
+  } catch (err) {
+    console.error("Failed to load posts:", err);
+    return [];
   }
 }
 
 async function addPost(postData) {
-  if (useGitHub) {
-    const posts = await getAllPosts();
-    const newId = Date.now();
-    const newPost = { id: newId, ...postData, downloads: 0, rating: 0, createdAt: Date.now() };
-    posts.unshift(newPost);
-    await writeGist(posts);
-    allPostsCache = posts;
-    return newId;
-  } else {
-    return await addPostLocal(postData);
-  }
+  const posts = await getAllPosts();
+  const newId = Date.now();
+  const newPost = { id: newId, ...postData, downloads: 0, rating: 0, createdAt: Date.now() };
+  posts.unshift(newPost);
+  await writeAllPostsRemote(posts);
+  allPostsCache = posts;
+  return newId;
 }
 
 async function updatePost(id, updatedData) {
-  if (useGitHub) {
-    let posts = await getAllPosts();
-    const index = posts.findIndex(p => p.id === id);
-    if (index === -1) throw new Error("Post not found");
-    posts[index] = { ...posts[index], ...updatedData };
-    await writeGist(posts);
-    allPostsCache = posts;
-  } else {
-    await updatePostLocal(id, updatedData);
-  }
+  let posts = await getAllPosts();
+  const index = posts.findIndex(p => p.id === id);
+  if (index === -1) throw new Error("Post not found");
+  posts[index] = { ...posts[index], ...updatedData };
+  await writeAllPostsRemote(posts);
+  allPostsCache = posts;
 }
 
 async function deletePostById(id) {
-  if (useGitHub) {
-    let posts = await getAllPosts();
-    posts = posts.filter(p => p.id !== id);
-    await writeGist(posts);
-    allPostsCache = posts;
-  } else {
-    await deletePostLocal(id);
-  }
+  let posts = await getAllPosts();
+  posts = posts.filter(p => p.id !== id);
+  await writeAllPostsRemote(posts);
+  allPostsCache = posts;
 }
 
 async function incrementDownloads(id) {
@@ -305,7 +224,7 @@ function readImageAsBlob(file) {
   });
 }
 
-// ---- Rendering functions ----
+// ---- Rendering functions (identical to before) ----
 function renderFilteredPosts(posts) {
   const container = document.getElementById("publicPostsContainer");
   if (!posts.length) { container.innerHTML = `<div class="loading-state"><i class="fas fa-search"></i> no posts match</div>`; return; }
@@ -420,13 +339,13 @@ async function renderPublicFeed() {
 
 function downloadFileFromPost(post){ if(!post.fileData?.blob)return; const a=document.createElement("a"); a.href=URL.createObjectURL(post.fileData.blob); a.download=post.fileData.name; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
 
-// ---- Admin zone ----
+// ---- Admin zone (same as before) ----
 async function renderAdminZone() {
   const container = document.getElementById("adminContentArea");
   if (!container) return;
   if (!currentAdminLoggedIn) {
     container.innerHTML = `<div class="admin-auth-container"><div style="max-width:420px; margin:0 auto; text-align:center"><i class="fas fa-fingerprint" style="font-size:2.5rem; color:#00e0ff"></i><h3>admin authentication</h3><p style="font-size:0.8rem">only the owner can manage tools</p><div style="background:rgba(0,0,0,0.5); padding:1.5rem; border-radius:1.5rem"><input type="password" id="adminPassInput" placeholder="master password" style="width:100%; margin-bottom:1rem"><button id="adminLoginBtn" class="btn-primary" style="width:100%"><i class="fas fa-unlock-alt"></i> unlock</button></div></div></div>`;
-    document.getElementById("adminLoginBtn")?.addEventListener("click", () => { if(document.getElementById("adminPassInput").value.trim() === localStorage.getItem("archive_admin_pass")) { currentAdminLoggedIn = true; renderAdminZone(); renderPublicFeed(); } else alert("❌ wrong password"); });
+    document.getElementById("adminLoginBtn")?.addEventListener("click", () => { if(document.getElementById("adminPassInput").value.trim() === localStorage.getItem(STORED_PASSWORD_KEY)) { currentAdminLoggedIn = true; renderAdminZone(); renderPublicFeed(); } else alert("❌ wrong password"); });
     return;
   }
   const posts = await getAllPosts();
@@ -553,7 +472,7 @@ async function editPostModal(id, type) {
 }
 
 async function handleMultipleFiles(){ const pfx=document.getElementById("multiTitlePrefix")?.value.trim(); const cd=document.getElementById("multiDesc")?.value.trim()||""; const files=Array.from(document.getElementById("multiFileInput").files); if(!files.length)return alert("Select files"); for(const f of files){ let title=pfx?`${pfx} - ${f.name}`:f.name; if(title.length>80)title=title.slice(0,77)+"..."; const fileData={name:f.name,size:f.size,type:f.type,blob:f}; await addPost({type:"file",title,description:cd,fileData}); } document.getElementById("multiTitlePrefix").value=""; document.getElementById("multiDesc").value=""; document.getElementById("multiFileInput").value=""; alert(`✅ ${files.length} file(s) posted`); renderAdminZone(); renderPublicFeed(); }
-async function handlePasswordChange(){ const old=prompt("Current password:"); if(old!==localStorage.getItem("archive_admin_pass"))return alert("Wrong password"); const np=prompt("New password (min 4 chars):"); if(!np||np.length<4)return alert("Min 4 chars"); if(np!==prompt("Confirm new password:"))return alert("Mismatch"); localStorage.setItem("archive_admin_pass",np); alert("Password changed!"); }
+async function handlePasswordChange(){ const old=prompt("Current password:"); if(old!==localStorage.getItem(STORED_PASSWORD_KEY))return alert("Wrong password"); const np=prompt("New password (min 4 chars):"); if(!np||np.length<4)return alert("Min 4 chars"); if(np!==prompt("Confirm new password:"))return alert("Mismatch"); localStorage.setItem(STORED_PASSWORD_KEY,np); alert("Password changed!"); }
 
 function initSidebar() {
   const hamburger = document.getElementById("hamburgerBtn");
